@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Alire
+        uses: alire-project/setup-alire@v3
+
+      - name: Pin GNAT toolchain
+        run: |
+          alr -n toolchain --select gnat_native gprbuild
+
+      - name: Build
+        run: alr -n build
+
+      - name: SPARK proof (level 1 baseline — runtime errors)
+        run: alr -n exec -- gnatprove -P hadawallet.gpr --level=1 --report=fail
+        # Baseline: no runtime errors anywhere. By week 4 this moves to
+        # --level=4 and adds explicit assertion of the key-isolation flow
+        # contract on Signing.Sign.
+
+      - name: Smoke run
+        run: ./bin/hadawallet

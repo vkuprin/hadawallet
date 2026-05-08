@@ -1,0 +1,22 @@
+name = "hadawallet"
+description = "Formally verified Bitcoin hardware wallet firmware in SPARK/Ada"
+version = "0.1.0-dev"
+
+authors = ["Vitaly Kuprin"]
+maintainers = ["Vitaly Kuprin <vkuprins97@gmail.com>"]
+maintainers-logins = ["vkuprins"]
+
+licenses = "AGPL-3.0-or-later"
+website = "https://github.com/vkuprins/hadawallet"
+
+tags = ["crypto", "bitcoin", "spark", "formal-methods", "hardware-wallet", "firmware"]
+
+executables = ["hadawallet"]
+project-files = ["hadawallet.gpr"]
+
+[build-switches."*"]
+ada_version = "Ada2022"
+contracts = "Yes"
+
+[[depends-on]]
+gnat = ">=12"

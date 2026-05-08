@@ -1,0 +1,11 @@
+obj/
+bin/
+alire/
+config/
+gnatprove/
+*.o
+*.ali
+*.bexch
+*.adb~
+*.ads~
+.DS_Store
