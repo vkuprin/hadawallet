@@ -14,9 +14,10 @@ jobs:
       - name: Setup Alire
         uses: alire-project/setup-alire@v3
 
-      - name: Pin GNAT toolchain
+      - name: Install gnatprove
         run: |
-          alr -n toolchain --select gnat_native gprbuild
+          alr -n install gnatprove
+          echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
 
       - name: Build
         run: alr -n build
