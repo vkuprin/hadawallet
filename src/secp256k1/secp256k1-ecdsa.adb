@@ -10,6 +10,7 @@
 pragma Style_Checks ("-s");
 
 with Secp256k1.Scalar;
+with Secp256k1.Group;
 
 package body Secp256k1.Ecdsa
   with SPARK_Mode => Off
@@ -52,15 +53,26 @@ is
       Pubkey  :    out Hadawallet.Pubkey_Bytes;
       Ok      :    out Boolean)
    is
+      P    : Secp256k1.Group.Affine_Point;
+      OkM  : Boolean;
+      OkC  : Boolean;
    begin
       Pubkey := [others => 0];
       if not Privkey_In_Range (Hadawallet.Byte_Array (Privkey)) then
          Ok := False;
          return;
       end if;
-      --  TODO Phase D: Group.Scalar_Mul (privkey, G) →
-      --                Group.To_Compressed.
-      Ok := False;
+
+      Secp256k1.Group.Scalar_Mul
+        (Hadawallet.Byte_Array (Privkey), P, OkM);
+      if not OkM then
+         Ok := False;
+         return;
+      end if;
+
+      Secp256k1.Group.To_Compressed
+        (P, Hadawallet.Byte_Array (Pubkey), OkC);
+      Ok := OkC;
    end Pubkey_From_Privkey;
 
    procedure Tweak_Add_Scalar
