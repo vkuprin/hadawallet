@@ -1,5 +1,7 @@
 # hadawallet
 
+ every other hardware wallet asks you to trust the vendor's process; this one ships machine-checkable artifact that says the worst-case bad thing can't happen
+
 > Formally verified Bitcoin hardware wallet firmware in SPARK/Ada.
 
 **Status**: v0.1-dev — module skeleton with isolated signing API. Build + level-1 SPARK proof passes in CI.

@@ -44,7 +44,7 @@ is
       Length    : out Hadawallet.Signature_Length)
    with
      Global  => (Input => Key_State),
-     Depends => (Signature => (Key_State, Digest), Length => Key_State);
+     Depends => ((Signature, Length) => (Key_State, Digest));
 
    --  Securely wipe the loaded key.
    procedure Wipe

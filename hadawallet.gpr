@@ -24,6 +24,13 @@ project Hadawallet is
       for Switches ("Ada") use ("-Es");  --  symbolic traceback
    end Binder;
 
+   package Linker is
+      for Switches ("Ada") use
+        ("-L/opt/homebrew/lib",   --  macOS Homebrew prefix
+         "-L/usr/local/lib",      --  Linux distro default
+         "-lsecp256k1");          --  Bitcoin Core reference impl
+   end Linker;
+
    package Prove is
       for Proof_Switches ("Ada") use
         ("--level=1",        --  baseline; raise to 4 by week 4

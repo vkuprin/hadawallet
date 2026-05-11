@@ -3,15 +3,24 @@
 Honesty here is critical. Overclaiming kills credibility with the security community,
 which is exactly the audience this project depends on.
 
-## Status: v0.1 (skeleton + key-isolation flow proof)
+## Status: v0.1 (real crypto + key-isolation flow proof)
 
 - Module APIs are designed for isolation: no public function returns private key bytes.
 - `gnatprove --level=1` (runtime-error checks) is the CI baseline.
-- **`Signing` Abstract_State + Global/Depends flow contracts landed**:
-  `gnatprove --level=4 --report=all` reports **15 / 15 (100%)** checks proved on
-  `Signing` (data dependencies, flow dependencies, initialization, termination —
-  zero unproved, zero justified). The "private key never leaves the signing
-  module" claim is now SPARK-verified by construction.
+- **`Signing` Abstract_State + Global/Depends flow contracts landed AND survive
+  the libsecp256k1 FFI swap**: `gnatprove --level=4 --report=all` reports
+  **15 / 15 (100%)** checks proved on `Signing` (data dependencies, flow
+  dependencies, initialization, termination — zero unproved, zero justified).
+  The "private key never leaves the signing module" claim is SPARK-verified
+  by construction, even though `Signing.Sign` now calls into C
+  (`secp256k1_ecdsa_sign`). The FFI call site lives inside Signing's body;
+  no other module gains visibility to the key bytes.
+- Pure-Ada SHA-256, SHA-512, RIPEMD-160, HMAC-SHA512 in `Hashing`
+  (test-vector-verified against FIPS 180-4 and RFC 4231; SPARK Gold proofs
+  on the bit-twiddling loops deferred to v0.2).
+- BIP173 bech32 P2WPKH encoder in `Address` (test-vector-verified —
+  `bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4` matches the BIP173 example
+  exactly).
 
 ## Status: v0.2 target (week 4 — HN launch)
 

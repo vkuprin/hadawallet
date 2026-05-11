@@ -17,12 +17,13 @@ is
    --
    --  Output buffer must be at least Hadawallet.Max_Address_Length chars.
    --  Length receives the count of valid chars; bytes beyond are unspecified.
-   --  Ok = False on internal encoding error (should not occur for valid pubkey).
+   --  Ok = False on internal encoding error (only for invalid pubkey shape).
    procedure Pubkey_To_Address
-     (Pubkey  : in     Hadawallet.Pubkey_Bytes;
-      Net     : in     Hadawallet.Network;
-      Output  :    out String;
-      Length  :    out Hadawallet.Address_Length;
-      Ok      :    out Boolean);
+     (Pubkey : in Hadawallet.Pubkey_Bytes;
+      Net    : in Hadawallet.Network;
+      Output : out String;
+      Length : out Hadawallet.Address_Length;
+      Ok     : out Boolean)
+   with Global => null, Depends => ((Output, Length, Ok) => (Pubkey, Net));
 
 end Address;

@@ -70,7 +70,16 @@
       "Bash(./bin/hadawallet)",
       "Bash(./scripts/lint.sh)",
       "Bash(./scripts/fmt.sh)",
-      "Bash(alr exec *)"
+      "Bash(alr exec *)",
+      "Bash(brew search *)",
+      "Read(//opt/homebrew/lib/**)",
+      "Read(//usr/local/lib/**)",
+      "Bash(brew install *)",
+      "Bash(ls /opt/homebrew/lib/libsecp256k1* /opt/homebrew/include/secp256k1* 2>&1)",
+      "Read(//opt/homebrew/include/**)",
+      "Bash(grep -E \"context_static|context_no_precomp|context_create\" /opt/homebrew/include/secp256k1.h | head -15)",
+      "Read(//opt/homebrew/Cellar/secp256k1/0.7.1/include/**)",
+      "Bash(PATH=__TRACKED_VAR__/.alire/bin:__TRACKED_VAR__ alr exec -- gnatprove -P hadawallet.gpr --level=4 --report=all)"
     ],
     "additionalDirectories": [
       "/tmp"

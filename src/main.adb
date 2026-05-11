@@ -8,6 +8,7 @@ with Ada.Text_IO;
 with Hadawallet;
 with Signing;
 with Hashing;
+with Address;
 with Comm;
 
 procedure Main is
@@ -43,6 +44,65 @@ procedure Main is
      [16#48#, 16#69#, 16#20#, 16#54#, 16#68#, 16#65#, 16#72#, 16#65#];
    Hmac_Out    : Hadawallet.Mac_Bytes_512;
    Hmac_Hex    : String (1 .. 128);
+
+   --  BIP173 P2WPKH test vector. Pubkey is the secp256k1 generator point G.
+   --  Expected mainnet address: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+   G_Pubkey : constant Hadawallet.Pubkey_Bytes :=
+     [16#02#,
+      16#79#,
+      16#be#,
+      16#66#,
+      16#7e#,
+      16#f9#,
+      16#dc#,
+      16#bb#,
+      16#ac#,
+      16#55#,
+      16#a0#,
+      16#62#,
+      16#95#,
+      16#ce#,
+      16#87#,
+      16#0b#,
+      16#07#,
+      16#02#,
+      16#9b#,
+      16#fc#,
+      16#db#,
+      16#2d#,
+      16#ce#,
+      16#28#,
+      16#d9#,
+      16#59#,
+      16#f2#,
+      16#81#,
+      16#5b#,
+      16#16#,
+      16#f8#,
+      16#17#,
+      16#98#];
+   Addr_Buf : String (1 .. Hadawallet.Max_Address_Length);
+   Addr_Len : Hadawallet.Address_Length;
+   Addr_Ok  : Boolean;
+
+   --  Smoke-test secp256k1 ECDSA sign. Privkey 0x01..0x01 (32 bytes), digest =
+   --  SHA-256("hadawallet"). RFC 6979 makes the signature deterministic.
+   Sig_Key    : constant Hadawallet.Privkey_Bytes := [others => 16#01#];
+   Sig_Msg    : constant Hadawallet.Byte_Array :=
+     [16#68#,
+      16#61#,
+      16#64#,
+      16#61#,
+      16#77#,
+      16#61#,
+      16#6c#,
+      16#6c#,
+      16#65#,
+      16#74#];
+   Sig_Digest : Hadawallet.Digest_Bytes;
+   Sig_Bytes  : Hadawallet.Signature_Bytes;
+   Sig_Len    : Hadawallet.Signature_Length;
+   Sig_Hex    : String (1 .. 144);
 
 begin
    Ada.Text_IO.Put_Line ("hadawallet v0.1-dev (skeleton)");
@@ -84,6 +144,33 @@ begin
    Ada.Text_IO.Put_Line ("[smoke-test] HMAC-SHA512 RFC4231 #1 =");
    Ada.Text_IO.Put_Line ("    " & Hmac_Hex (1 .. 64));
    Ada.Text_IO.Put_Line ("    " & Hmac_Hex (65 .. 128));
+
+   Address.Pubkey_To_Address
+     (G_Pubkey, Hadawallet.Bitcoin_Mainnet, Addr_Buf, Addr_Len, Addr_Ok);
+   Ada.Text_IO.Put_Line
+     ("[smoke-test] bech32 P2WPKH(G)  = "
+      & Addr_Buf (1 .. Addr_Len)
+      & " (ok="
+      & Boolean'Image (Addr_Ok)
+      & ")");
+
+   --  Real ECDSA sign via libsecp256k1.
+   Signing.Load_Privkey (Sig_Key);
+   Hashing.SHA256 (Sig_Msg, Sig_Digest);
+   Signing.Sign (Sig_Digest, Sig_Bytes, Sig_Len);
+   if Sig_Len > 0 then
+      for I in 1 .. Natural (Sig_Len) loop
+         Sig_Hex (2 * (I - 1) + 1 .. 2 * (I - 1) + 2) := Hex (Sig_Bytes (I));
+      end loop;
+      Ada.Text_IO.Put_Line
+        ("[smoke-test] ECDSA sign len  = "
+         & Hadawallet.Signature_Length'Image (Sig_Len)
+         & " bytes (DER)");
+      Ada.Text_IO.Put_Line ("    " & Sig_Hex (1 .. 2 * Natural (Sig_Len)));
+   else
+      Ada.Text_IO.Put_Line ("[smoke-test] ECDSA sign FAILED");
+   end if;
+   Signing.Wipe;
 
    Ada.Text_IO.New_Line;
    Comm.Run;
