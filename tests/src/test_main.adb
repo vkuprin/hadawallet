@@ -15,6 +15,7 @@ with Address;
 with Signing;
 with Transaction;
 with Key_Derivation;
+with Secp256k1.Der;
 
 procedure Test_Main is
 
@@ -327,6 +328,52 @@ procedure Test_Main is
                           = "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu");
    end Test_BIP84;
 
+   ---------------------------------------------------------------------------
+   --  Secp256k1.Der vector tests
+   ---------------------------------------------------------------------------
+
+   procedure Test_DER;
+   procedure Test_DER is
+      Sig : Hadawallet.Signature_Bytes;
+      Len : Hadawallet.Signature_Length;
+
+      --  Trivial r=0x4F, s=0x9A (high bit -> needs leading 0x00 pad on s).
+      R1 : constant Hadawallet.Privkey_Bytes :=
+        [1 .. 31 => 0, 32 => 16#4F#];
+      S1 : constant Hadawallet.Privkey_Bytes :=
+        [1 .. 31 => 0, 32 => 16#9A#];
+      Expected1 : constant Hadawallet.Byte_Array := From_Hex
+        ("3007020104f02020009a");
+      --  Canonical full-32-byte r and s, neither needs strip nor pad.
+      R2 : constant Hadawallet.Privkey_Bytes :=
+        Hadawallet.Privkey_Bytes (From_Hex
+          ("455bf64f877f6366b5bc37bcff0cab21fe152b093e479692df82ef1ab42fd61b"));
+      S2 : constant Hadawallet.Privkey_Bytes :=
+        Hadawallet.Privkey_Bytes (From_Hex
+          ("737cd2193815503c3b365230afbef9fd79a3ea7469adfb92a5f4a90008ca8ead"));
+   begin
+      Secp256k1.Der.Encode_Signature
+        (Hadawallet.Byte_Array (R1), Hadawallet.Byte_Array (S1), Sig, Len);
+      Check ("DER short r/s with s padding",
+             Len = 9
+             and then Sig (1) = 16#30# and then Sig (2) = 16#07#
+             and then Sig (3) = 16#02# and then Sig (4) = 16#01#
+             and then Sig (5) = 16#4F#
+             and then Sig (6) = 16#02# and then Sig (7) = 16#02#
+             and then Sig (8) = 16#00# and then Sig (9) = 16#9A#);
+      pragma Unreferenced (Expected1);
+
+      Secp256k1.Der.Encode_Signature
+        (Hadawallet.Byte_Array (R2), Hadawallet.Byte_Array (S2), Sig, Len);
+      --  r starts with 0x45 (high bit clear) -> 32 bytes, no pad.
+      --  s starts with 0x73 (high bit clear) -> 32 bytes, no pad.
+      --  total = 2+32 + 2+32 = 68; full DER = 70 bytes.
+      Check ("DER 32-byte r/s no pad/strip", Len = 70
+             and then Sig (1) = 16#30# and then Sig (2) = 16#44#
+             and then Sig (3) = 16#02# and then Sig (4) = 16#20#
+             and then Sig (37) = 16#02# and then Sig (38) = 16#20#);
+   end Test_DER;
+
 begin
    Ada.Text_IO.Put_Line ("hadawallet test suite");
    Ada.Text_IO.Put_Line ("---------------------");
@@ -338,6 +385,7 @@ begin
    Test_PSBT;
    Test_BIP39;
    Test_BIP84;
+   Test_DER;
    Ada.Text_IO.Put_Line ("---------------------");
    if Failures = 0 then
       Ada.Text_IO.Put_Line ("ALL TESTS PASSED");
