@@ -1,10 +1,14 @@
 --  Secp256k1.Field — 256-bit arithmetic modulo
 --    p = 2^256 − 2^32 − 977
+--      = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFE_FFFFFC2F
 --
---  STATUS: Phase D skeleton. Body returns zero outputs and Ok=False.
---  Real implementation: 4×64-bit (or 10×26-bit on M-class targets)
---  limb representation, constant-time add/sub/mul/sqr/inverse, with
---  bounded loop invariants for SPARK Silver. ~4–8 weeks D1 effort.
+--  Representation: 8 × U32 limbs, little-endian (Limbs(0) = bits 0..31,
+--  Limbs(7) = bits 224..255). Chosen over 4 × U64 to keep multiplication
+--  intermediates inside U64 — no 128-bit arithmetic needed.
+--
+--  STATUS: Phase D in progress. From_Be32 / To_Be32 / Compare /
+--  Sub_If_Carry / Add / Sub work and pass vectors. Mul / Sqr / Inv
+--  are still stubs (the harder D1 work).
 
 with Hadawallet;
 
@@ -12,19 +16,17 @@ package Secp256k1.Field
   with SPARK_Mode => On
 is
 
-   --  4 × 64-bit limb representation of a field element. Limbs are
-   --  little-endian: Limbs(0) holds bits 0..63, Limbs(3) holds bits
-   --  192..255. Values are NOT necessarily reduced mod p — see
-   --  Normalize.
-   type Limbs_4 is array (0 .. 3) of Hadawallet.U64;
+   type Limbs_8 is array (0 .. 7) of Hadawallet.U32;
    type Field_Element is record
-      Limbs : Limbs_4 := [others => 0];
+      Limbs : Limbs_8 := [others => 0];
    end record;
 
-   Zero : constant Field_Element := (Limbs => [0, 0, 0, 0]);
-   One  : constant Field_Element := (Limbs => [1, 0, 0, 0]);
+   Zero : constant Field_Element := (Limbs => [0, 0, 0, 0, 0, 0, 0, 0]);
+   One  : constant Field_Element := (Limbs => [1, 0, 0, 0, 0, 0, 0, 0]);
 
-   --  32-byte big-endian conversion (field representation per SEC1 §2.3.5).
+   --  Parse a 32-byte big-endian buffer. Ok = False if the value is
+   --  greater than or equal to p (caller may need to retry with a
+   --  different random source).
    procedure From_Be32
      (Bytes : in     Hadawallet.Byte_Array;
       F     :    out Field_Element;
@@ -40,14 +42,22 @@ is
         Global  => null,
         Depends => (Bytes => F);
 
-   --  Modular arithmetic. All operate on canonical (normalized) inputs
-   --  and produce canonical outputs.
+   --  Three-way comparison: returns -1, 0, +1 if A <, =, > B.
+   function Compare (A, B : Field_Element) return Integer
+   with Global => null;
+
+   --  (A + B) mod p
    procedure Add (A, B : in Field_Element; R : out Field_Element)
    with Global => null, Depends => (R => (A, B));
 
+   --  (A - B) mod p
    procedure Sub (A, B : in Field_Element; R : out Field_Element)
    with Global => null, Depends => (R => (A, B));
 
+   --  TODO Phase D: Mul, Sqr, Inv. Multiplication needs 8×8 partial
+   --  products with mod-p reduction; inversion via Fermat
+   --  (a^(p-2) mod p) is composable once Mul lands. Estimate: ~2 weeks
+   --  D1.a effort.
    procedure Mul (A, B : in Field_Element; R : out Field_Element)
    with Global => null, Depends => (R => (A, B));
 

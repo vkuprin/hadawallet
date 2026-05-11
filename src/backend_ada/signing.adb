@@ -1,41 +1,21 @@
 --  Signing body — pure-SPARK backend (BACKEND=ada).
 --
---  STATUS: Phase D skeleton. The Sign / Tweak_Add_Scalar /
---  Pubkey_From_Privkey procedures all return failure outputs because
---  Secp256k1.Field / .Scalar / .Group / .Ecdsa are not yet implemented
---  (see plan: D1 = 4–8 weeks, D2 = +3–4 weeks for SPARK Silver,
---  D3 = +2–3 weeks for constant-time hardening).
---
---  This body exists so that BACKEND=ada builds compile and link without
---  libsecp256k1 — required by the STM32 cross-compile path
---  (hadawallet_stm32.gpr) where bare-metal ARM has no libsecp256k1
---  binary available.
---
---  The Abstract_State / Refined_State / Global / Depends contracts on
---  Signing.* are identical to backend_c — only the body of each
---  procedure differs. The key-isolation flow proof carries through
---  unchanged: even though Sign returns 0 bytes, the contract
---  `(Signature, Length) => (Key_State, Digest)` is honored (Length=0
---  is a valid output, just unhelpful).
+--  Delegates the three cryptographic primitives to Secp256k1.Ecdsa.
+--  Today Ecdsa.* are stubs (return failure outputs); when Phase D
+--  lands, this body needs no further changes. The key-isolation
+--  abstraction stays here: Stored_Key never leaves this package
+--  body, and the only function that reads it is Sign.
 
-with Secp256k1;
-pragma Unreferenced (Secp256k1);
---  Pulled in so that any future implementation can reach into the
---  child packages without changing this with clause; the unreferenced
---  pragma silences the warning until the implementation lands.
+with Secp256k1.Ecdsa;
 
 package body Signing
   with
     SPARK_Mode    => Off,
     Refined_State => (Key_State => (Stored_Key, Key_Is_Loaded))
 is
-   --  SPARK_Mode => Off on the body: this stub intentionally violates
-   --  the spec's flow dependencies (Pubkey_From_Privkey returns zero
-   --  Pubkey independent of Privkey; Tweak_Add_Scalar discards Tweak
-   --  and zeros Scalar). The spec contracts stay SPARK_Mode => On so
-   --  callers can prove against them. When Phase D lands, the body
-   --  flips back to On and gains the same 22/22 (or higher) coverage
-   --  as the c-backend.
+   --  SPARK_Mode => Off on the body until Phase D's curve math passes
+   --  proof at Silver — see plan. Spec-level flow contracts remain
+   --  SPARK_Mode => On so callers can prove against them today.
 
    Stored_Key    : Hadawallet.Privkey_Bytes := [others => 0];
    Key_Is_Loaded : Boolean := False;
@@ -63,11 +43,13 @@ is
      Refined_Depends =>
        ((Signature, Length) => (Stored_Key, Key_Is_Loaded, Digest))
    is
-      pragma Unreferenced (Digest);
    begin
       Signature := [others => 0];
-      Length := 0;
-      --  TODO Phase D: call Secp256k1.Ecdsa.Sign (Stored_Key, Digest, ...).
+      if Key_Is_Loaded then
+         Secp256k1.Ecdsa.Sign (Stored_Key, Digest, Signature, Length);
+      else
+         Length := 0;
+      end if;
    end Sign;
 
    procedure Wipe
@@ -85,13 +67,8 @@ is
       Tweak  : in Hadawallet.Privkey_Bytes;
       Ok     : out Boolean)
    is
-      pragma Unreferenced (Tweak);
    begin
-      --  TODO Phase D: pure-SPARK scalar add mod n via Secp256k1.Scalar.
-      --  Until then, zero the scalar and signal failure so any
-      --  Key_Derivation non-hardened path aborts cleanly.
-      Scalar := [others => 0];
-      Ok := False;
+      Secp256k1.Ecdsa.Tweak_Add_Scalar (Scalar, Tweak, Ok);
    end Tweak_Add_Scalar;
 
    procedure Pubkey_From_Privkey
@@ -99,12 +76,8 @@ is
       Pubkey  : out Hadawallet.Pubkey_Bytes;
       Ok      : out Boolean)
    is
-      pragma Unreferenced (Privkey);
    begin
-      --  TODO Phase D: Pubkey := point_compress(privkey * G) via
-      --  Secp256k1.Group.Scalar_Mul + Secp256k1.Group.Compressed.
-      Pubkey := [others => 0];
-      Ok := False;
+      Secp256k1.Ecdsa.Pubkey_From_Privkey (Privkey, Pubkey, Ok);
    end Pubkey_From_Privkey;
 
 end Signing;

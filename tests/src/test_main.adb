@@ -16,6 +16,8 @@ with Signing;
 with Transaction;
 with Key_Derivation;
 with Secp256k1.Der;
+with Secp256k1.Field;
+with Secp256k1.Scalar;
 
 procedure Test_Main is
 
@@ -374,6 +376,177 @@ procedure Test_Main is
              and then Sig (37) = 16#02# and then Sig (38) = 16#20#);
    end Test_DER;
 
+   ---------------------------------------------------------------------------
+   --  Secp256k1.Field — modular arithmetic mod p
+   ---------------------------------------------------------------------------
+
+   procedure Test_Field;
+   procedure Test_Field is
+      F, G, H        : Secp256k1.Field.Field_Element;
+      Roundtrip      : Hadawallet.Byte_Array (1 .. 32) := [others => 0];
+      Ok             : Boolean;
+
+      --  Some easy values.
+      One : constant Hadawallet.Byte_Array := From_Hex
+        ("0000000000000000000000000000000000000000000000000000000000000001");
+      Two : constant Hadawallet.Byte_Array := From_Hex
+        ("0000000000000000000000000000000000000000000000000000000000000002");
+      Three : constant Hadawallet.Byte_Array := From_Hex
+        ("0000000000000000000000000000000000000000000000000000000000000003");
+      --  p - 1 (largest valid field element).
+      P_Minus_1 : constant Hadawallet.Byte_Array := From_Hex
+        ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E");
+      --  p (must be rejected by From_Be32).
+      P_Bytes : constant Hadawallet.Byte_Array := From_Hex
+        ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F");
+   begin
+      --  From_Be32 / To_Be32 round-trip.
+      Secp256k1.Field.From_Be32 (One, F, Ok);
+      Check ("Field From_Be32(1) ok", Ok);
+      Secp256k1.Field.To_Be32 (F, Roundtrip);
+      Check ("Field round-trip 1", Roundtrip = One);
+
+      --  p - 1 round-trips.
+      Secp256k1.Field.From_Be32 (P_Minus_1, F, Ok);
+      Check ("Field From_Be32(p-1) ok", Ok);
+      Secp256k1.Field.To_Be32 (F, Roundtrip);
+      Check ("Field round-trip p-1", Roundtrip = P_Minus_1);
+
+      --  p itself is rejected.
+      Secp256k1.Field.From_Be32 (P_Bytes, F, Ok);
+      Check ("Field From_Be32(p) rejected", not Ok);
+
+      --  1 + 2 == 3.
+      Secp256k1.Field.From_Be32 (One, F, Ok);
+      Secp256k1.Field.From_Be32 (Two, G, Ok);
+      Secp256k1.Field.Add (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field 1 + 2 = 3", Roundtrip = Three);
+
+      --  (p-1) + 1 == 0 (modular wrap).
+      Secp256k1.Field.From_Be32 (P_Minus_1, F, Ok);
+      Secp256k1.Field.From_Be32 (One, G, Ok);
+      Secp256k1.Field.Add (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field (p-1) + 1 = 0",
+             Roundtrip = Hadawallet.Byte_Array
+               (From_Hex
+                  ("0000000000000000000000000000000000000000000000000000000000000000")));
+
+      --  3 - 2 = 1.
+      Secp256k1.Field.From_Be32 (Three, F, Ok);
+      Secp256k1.Field.From_Be32 (Two, G, Ok);
+      Secp256k1.Field.Sub (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field 3 - 2 = 1", Roundtrip = One);
+
+      --  0 - 1 = p - 1 (modular underflow).
+      Secp256k1.Field.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+           ("0000000000000000000000000000000000000000000000000000000000000000")),
+         F, Ok);
+      Secp256k1.Field.From_Be32 (One, G, Ok);
+      Secp256k1.Field.Sub (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field 0 - 1 = p - 1", Roundtrip = P_Minus_1);
+   end Test_Field;
+
+   ---------------------------------------------------------------------------
+   --  Secp256k1.Scalar — modular arithmetic mod n
+   ---------------------------------------------------------------------------
+
+   procedure Test_Scalar;
+   procedure Test_Scalar is
+      S, T, U   : Secp256k1.Scalar.Scalar_Element;
+      Roundtrip : Hadawallet.Byte_Array (1 .. 32) := [others => 0];
+      Ok        : Boolean;
+
+      Zero_B : constant Hadawallet.Byte_Array := From_Hex
+        ("0000000000000000000000000000000000000000000000000000000000000000");
+      One_B : constant Hadawallet.Byte_Array := From_Hex
+        ("0000000000000000000000000000000000000000000000000000000000000001");
+      --  n - 1 (largest valid scalar in [1, n-1]).
+      N_Minus_1 : constant Hadawallet.Byte_Array := From_Hex
+        ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140");
+      N_Bytes : constant Hadawallet.Byte_Array := From_Hex
+        ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
+   begin
+      --  Round-trip.
+      Secp256k1.Scalar.From_Be32 (One_B, S, Ok);
+      Check ("Scalar From_Be32(1) ok", Ok);
+      Secp256k1.Scalar.To_Be32 (S, Roundtrip);
+      Check ("Scalar round-trip 1", Roundtrip = One_B);
+
+      --  n itself is rejected.
+      Secp256k1.Scalar.From_Be32 (N_Bytes, S, Ok);
+      Check ("Scalar From_Be32(n) rejected", not Ok);
+
+      --  In_Range checks.
+      Secp256k1.Scalar.From_Be32 (Zero_B, S, Ok);
+      Check ("Scalar In_Range(0) = False",
+             not Secp256k1.Scalar.In_Range_1_To_N_Minus_1 (S));
+      Secp256k1.Scalar.From_Be32 (One_B, S, Ok);
+      Check ("Scalar In_Range(1) = True",
+             Secp256k1.Scalar.In_Range_1_To_N_Minus_1 (S));
+      Secp256k1.Scalar.From_Be32 (N_Minus_1, S, Ok);
+      Check ("Scalar In_Range(n-1) = True",
+             Secp256k1.Scalar.In_Range_1_To_N_Minus_1 (S));
+
+      --  (n-1) + 1 == 0 mod n.
+      Secp256k1.Scalar.From_Be32 (N_Minus_1, S, Ok);
+      Secp256k1.Scalar.From_Be32 (One_B, T, Ok);
+      Secp256k1.Scalar.Add (S, T, U);
+      Secp256k1.Scalar.To_Be32 (U, Roundtrip);
+      Check ("Scalar (n-1) + 1 = 0", Roundtrip = Zero_B);
+
+      --  0 - 1 == n - 1 mod n.
+      Secp256k1.Scalar.From_Be32 (Zero_B, S, Ok);
+      Secp256k1.Scalar.From_Be32 (One_B, T, Ok);
+      Secp256k1.Scalar.Sub (S, T, U);
+      Secp256k1.Scalar.To_Be32 (U, Roundtrip);
+      Check ("Scalar 0 - 1 = n - 1", Roundtrip = N_Minus_1);
+   end Test_Scalar;
+
+   ---------------------------------------------------------------------------
+   --  Signing.Tweak_Add_Scalar — cross-backend equality.
+   --  On BACKEND=c this exercises libsecp256k1; on BACKEND=ada it
+   --  exercises Secp256k1.Ecdsa.Tweak_Add_Scalar -> Scalar.Add. Both
+   --  must produce the same output byte-for-byte.
+   ---------------------------------------------------------------------------
+
+   procedure Test_Tweak_Add_Scalar;
+   procedure Test_Tweak_Add_Scalar is
+      K  : Hadawallet.Privkey_Bytes;
+      T  : Hadawallet.Privkey_Bytes;
+      Ok : Boolean;
+
+      One   : constant Hadawallet.Privkey_Bytes :=
+        [1 .. 31 => 0, 32 => 1];
+      Two   : constant Hadawallet.Privkey_Bytes :=
+        [1 .. 31 => 0, 32 => 2];
+      Three : constant Hadawallet.Privkey_Bytes :=
+        [1 .. 31 => 0, 32 => 3];
+
+      --  n - 1: largest valid privkey.
+      N_Minus_1 : constant Hadawallet.Privkey_Bytes :=
+        Hadawallet.Privkey_Bytes
+          (From_Hex
+            ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140"));
+   begin
+      --  1 + 2 = 3.
+      K := One;
+      T := Two;
+      Signing.Tweak_Add_Scalar (K, T, Ok);
+      Check ("Signing.Tweak_Add_Scalar(1, 2) ok", Ok);
+      Check ("Signing.Tweak_Add_Scalar(1, 2) = 3", K = Three);
+
+      --  1 + (n-1) = 0 mod n → not in [1, n-1] → Ok=False.
+      K := One;
+      T := N_Minus_1;
+      Signing.Tweak_Add_Scalar (K, T, Ok);
+      Check ("Signing.Tweak_Add_Scalar(1, n-1) rejected (sum=0)", not Ok);
+   end Test_Tweak_Add_Scalar;
+
 begin
    Ada.Text_IO.Put_Line ("hadawallet test suite");
    Ada.Text_IO.Put_Line ("---------------------");
@@ -386,6 +559,9 @@ begin
    Test_BIP39;
    Test_BIP84;
    Test_DER;
+   Test_Field;
+   Test_Scalar;
+   Test_Tweak_Add_Scalar;
    Ada.Text_IO.Put_Line ("---------------------");
    if Failures = 0 then
       Ada.Text_IO.Put_Line ("ALL TESTS PASSED");
