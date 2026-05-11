@@ -1,5 +1,69 @@
 # hadawallet — project conventions
 
+## CRITICAL: MCP-First Tool Usage
+
+**ALWAYS use MCP tools before falling back to built-in tools. This is mandatory, not optional.**
+
+- **Discovery/exploration** → Serena `search_for_pattern` FIRST. Do NOT use Grep/Glob to explore unfamiliar code. (ACI is disabled here — no Ada/SPARK tree-sitter support yet.)
+- **Understanding symbols** → Serena `find_symbol`/`get_symbols_overview` FIRST. Do NOT use Read to scan entire files.
+- **Finding references** → Serena `find_referencing_symbols` FIRST. Do NOT grep for function names.
+- **Editing code** → Serena `replace_symbol_body` for whole symbols. Only use Edit for small inline changes.
+- **Library docs** → Context7 FIRST. Do NOT web search for API references.
+
+Built-in tools (Grep, Glob, Read, Edit) are **fallbacks only** — use them when MCP tools are unavailable, return errors, or when the task is trivially simple (e.g., reading a known file path the user gave you).
+
+## MCP Servers & Plugins
+
+### Serena (Primary Code Intelligence)
+
+- **Understanding code**: Use `get_symbols_overview` to explore files, `find_symbol` with `include_body=True` to read specific symbols
+- **Finding code**: Use `search_for_pattern` for regex search, `find_symbol` with `substring_matching=True` for fuzzy symbol lookup
+- **References**: Use `find_referencing_symbols` to trace usage across the codebase
+- **Editing**: Use `replace_symbol_body`, `rename_symbol`, `insert_after_symbol` for precise refactors
+- **Memory**: Use Serena memories to persist project context between conversations
+- Prefer Serena's symbolic tools over raw file reads and grep — they understand code structure
+
+### ACI — disabled for this project
+
+ACI's tree-sitter pipeline does not yet support Ada/SPARK, so semantic search would
+return no useful chunks for this codebase. Do NOT call `mcp__aci__*` tools here —
+use Serena (`search_for_pattern`, `find_symbol`) for all discovery and navigation.
+Revisit if/when ACI ships an Ada grammar.
+
+### Context7
+
+- Use `resolve-library-id` + `query-docs` to fetch up-to-date docs for any dependency
+- Prefer over web search when you need API references or usage examples
+
+### Sequential Thinking
+
+- **Purpose**: Structured multi-step reasoning for complex decisions and planning
+- **When to use**: Architecture decisions, multi-file refactors, debugging complex issues, evaluating trade-offs
+- **How it works**: Breaks problems into numbered thought steps, can revise and branch reasoning
+- Use before jumping into code when the task involves: choosing between approaches, understanding side effects of a change, planning a multi-step feature, or debugging something non-obvious
+- Especially useful in plan mode — think through the approach first, then execute
+
+### Tool Selection Priority
+
+1. **"Where is X?" / understanding code** → Serena `find_symbol`, `get_symbols_overview`, `search_for_pattern`
+2. **Broad discovery / "how does X work?"** → Serena `search_for_pattern` with broad regex (ACI is disabled for Ada/SPARK)
+3. **Symbol lookup / references / renaming** → Serena `find_referencing_symbols`, `rename_symbol`
+4. **Exact text search** → Serena `search_for_pattern` (preferred) or built-in Grep as fallback
+5. **Complex decisions / planning / debugging** → Sequential Thinking
+6. **Library docs** → Context7
+7. **Quick file reads/edits** → built-in Read/Edit tools
+
+### Typical Workflow
+
+1. **Discover** — Serena: `search_for_pattern` with broad regex, or `get_symbols_overview` on a likely file
+2. **Think** — Sequential Thinking: plan the approach, evaluate trade-offs, identify affected areas
+3. **Navigate** — Serena: `find_symbol` → `find_referencing_symbols` → understand the dependency chain
+4. **Learn** — Context7: fetch latest docs for any libraries involved
+5. **Edit** — Serena: `replace_symbol_body`, `insert_after_symbol` for precise changes
+6. **Verify** — `alr build` + `gnatprove --level=1 --report=fail` (see Build section)
+
+
+
 ## What this is
 
 Formally verified Bitcoin hardware wallet firmware in SPARK/Ada. Headline claim:
