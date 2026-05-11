@@ -2,6 +2,7 @@ obj/
 bin/
 config/
 gnatprove/
+default.cgpr
 *.o
 *.ali
 *.bexch

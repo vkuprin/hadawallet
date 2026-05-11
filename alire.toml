@@ -20,3 +20,7 @@ contracts = "Yes"
 
 [[depends-on]]
 gnat = ">=12"
+
+[[actions]]
+type = "test"
+command = ["./scripts/test.sh"]

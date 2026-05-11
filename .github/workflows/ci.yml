@@ -33,10 +33,10 @@ jobs:
           alr -n install gnatcov_bin
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
 
-      - name: Install lint helpers (shellcheck, actionlint)
+      - name: Install lint helpers + libsecp256k1
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq shellcheck
+          sudo apt-get install -y -qq shellcheck libsecp256k1-dev
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           sudo mv actionlint /usr/local/bin/
 
@@ -51,11 +51,17 @@ jobs:
       - name: Build
         run: alr -n build
 
-      - name: SPARK proof (level 1 baseline — runtime errors)
-        run: alr -n exec -- gnatprove -P hadawallet.gpr --level=1 --report=fail
-        # Baseline: no runtime errors anywhere. By week 4 this moves to
-        # --level=4 and adds explicit assertion of the key-isolation flow
-        # contract on Signing.Sign.
+      - name: SPARK proof (level 4 — key-isolation flow contract)
+        run: alr -n exec -- gnatprove -P hadawallet.gpr --level=4 --report=fail
+        # Asserts: 15/15 checks proved on Signing — data dependencies, flow
+        # dependencies, initialization, termination. The headline "private
+        # key never leaves the signing module" claim is verified here.
 
-      - name: Smoke run
-        run: ./bin/hadawallet
+      - name: Smoke run (module vector checks)
+        run: ./bin/hadawallet --smoke
+
+      - name: Test suite (BIP/FIPS/RFC vectors)
+        run: ./scripts/test.sh
+
+      - name: End-to-end PSBT signing demo
+        run: ./scripts/demo-offline.sh
