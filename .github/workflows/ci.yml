@@ -25,13 +25,15 @@ jobs:
           restore-keys: |
             alire-${{ runner.os }}-
 
-      - name: Install gnatprove + gnatformat + gnatdoc + gnatcov
+      - name: Install gnatprove + gnatformat
         run: |
+          alr index --update-all
           alr -n install gnatprove
           alr -n install gnatformat
-          alr -n install gnatdoc_bin
-          alr -n install gnatcov_bin
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
+        # gnatdoc / gnatcov live only in docs.yml — keep the ci.yml surface
+        # narrow so a stale Alire index can't break the build/prove/test
+        # pipeline.
 
       - name: Install lint helpers + libsecp256k1
         run: |

@@ -36,8 +36,12 @@ jobs:
 
       - name: Install gnatdoc
         run: |
+          alr index --update-all
           alr -n install gnatdoc_bin
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
+        # The setup-alire@v3 action ships a snapshot Alire catalog; refresh
+        # it so we resolve the current gnatdoc_bin crate (otherwise:
+        # "Could not find a complete solution for gnatdoc_bin*").
 
       - name: Generate docs
         run: ./scripts/docs.sh
