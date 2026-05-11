@@ -8,7 +8,7 @@ record.
 
 - [ ] `alr build` clean on macOS arm64 + Linux x64.
 - [ ] `alr test` passes 26/26 vectors.
-- [ ] `gnatprove --level=4 --report=fail` reports 15/15 (100%) on `Signing`.
+- [ ] `gnatprove --level=4 --report=fail` reports 22/22 (100%) on `Signing`.
 - [ ] `./scripts/demo-offline.sh` produces a signed PSBT with `partial_sig`.
 - [ ] CI green on `main`.
 - [ ] README accurately enumerates proven vs. trusted (no overclaims).
@@ -25,7 +25,7 @@ asciinema rec hadawallet-demo.cast --command "./scripts/demo-offline.sh && \
 Target length: < 60 seconds. Two visible sections:
 
 1. `demo-offline.sh` running end-to-end, showing the hex-dumped signed PSBT.
-2. `gnatprove --level=4` running, showing the 15/15 (100%) line.
+2. `gnatprove --level=4` running, showing the 22/22 (100%) line.
 
 Upload to asciinema.org, embed link in HN post.
 
@@ -44,7 +44,7 @@ not by code review or testing.
 
 Concretely: the Signing package declares Abstract_State => Key_State and
 every other procedure declares Global / Depends against it. gnatprove
---level=4 reports 15/15 (100%) checks proved: data dependencies, flow
+--level=4 reports 22/22 (100%) checks proved: data dependencies, flow
 dependencies, initialization, termination. If a future change ever
 introduces a path from the key buffer to any output of any other module,
 the build fails.

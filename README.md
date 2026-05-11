@@ -4,13 +4,20 @@ Every other hardware wallet asks you to trust the vendor's process. This one shi
 
 > Formally verified Bitcoin hardware wallet firmware in SPARK/Ada.
 
-**Status**: v0.1-dev — end-to-end PSBT signing works. `gnatprove --level=4`
-reports **15 / 15 (100%)** checks proved on `Signing` — the key-isolation flow
-contract is verified by SPARK, not aspirational.
+**Status**: v0.2-dev — end-to-end PSBT signing works, BIP39 mnemonic + BIP32
+derivation lands. `gnatprove --level=4` reports **22 / 22 (100%)** checks
+proved on `Signing` — the key-isolation flow contract is verified by SPARK,
+not aspirational.
 
 ```bash
 alr build
 ./scripts/demo-offline.sh   # full sign-a-PSBT demo, no bitcoind required
+
+# Mnemonic-derived address (BIP84 test vector):
+echo "abandon abandon abandon abandon abandon abandon \
+abandon abandon abandon abandon abandon about" > ~/.hadawallet/mnemonic.txt
+./bin/hadawallet --address mainnet
+# bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu
 ```
 
 ## The claim
@@ -120,12 +127,15 @@ except via `Sign`, whose declared dependency is `(Signature, Length) =>
 
 **In v0.1–v0.2**: BTC only, secp256k1, P2WPKH segwit v0, bech32, PSBT v0
 (BIP174) restricted to ≤ 16 inputs/outputs, stdin/stdout PSBT I/O, native
-binary. STM32 Nucleo-F4 conditional on launch traction.
+binary, BIP39 + BIP32 + BIP84 key derivation (mnemonic file at
+`$HADAWALLET_MNEMONIC_FILE`, path at `$HADAWALLET_PATH`, default
+`m/84'/0'/0'/0/0`). Raw-key fallback at `$HADAWALLET_PRIVKEY_FILE` retained
+for demos. STM32 Nucleo-F4 conditional on launch traction.
 
-**Not in v0.1–v0.2**: altcoins, multisig, taproot, BIP32/39 derivation
-(privkey is loaded from a raw 32-byte file via `HADAWALLET_PRIVKEY_FILE` for
-v0.1 — mnemonic derivation lands in v0.2), USB HID, BLE, GUI, secure boot,
-side-channel hardening, pure-SPARK secp256k1.
+**Not in v0.1–v0.2**: altcoins, multisig, taproot, USB HID, BLE, GUI, secure
+boot, side-channel hardening, pure-SPARK secp256k1, UTF-8 NFKD
+normalization of non-ASCII mnemonics (English BIP39 wordlist + ASCII
+passphrase only).
 
 ## License
 

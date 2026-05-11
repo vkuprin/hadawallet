@@ -55,15 +55,31 @@ jobs:
 
       - name: SPARK proof (level 4 — key-isolation flow contract)
         run: alr -n exec -- gnatprove -P hadawallet.gpr --level=4 --report=fail
-        # Asserts: 15/15 checks proved on Signing — data dependencies, flow
+        # Asserts: 22/22 checks proved on Signing — data dependencies, flow
         # dependencies, initialization, termination. The headline "private
-        # key never leaves the signing module" claim is verified here.
+        # key never leaves the signing module" claim is verified here, and
+        # extends to BIP32's Tweak_Add_Scalar / Pubkey_From_Privkey helpers
+        # added in v0.2.
 
       - name: Smoke run (module vector checks)
         run: ./bin/hadawallet --smoke
 
-      - name: Test suite (BIP/FIPS/RFC vectors)
+      - name: Test suite (BIP/FIPS/RFC vectors + BIP39/BIP84 derivation)
         run: ./scripts/test.sh
 
-      - name: End-to-end PSBT signing demo
+      - name: End-to-end PSBT signing demo (offline)
         run: ./scripts/demo-offline.sh
+
+      - name: Install bitcoind (for regtest E2E)
+        run: |
+          sudo apt-get install -y -qq jq
+          # bitcoind is shipped under bitcoin-core in modern Debian/Ubuntu.
+          # On Ubuntu 22.04+ runners it's available via the default APT repo.
+          sudo apt-get install -y -qq bitcoind || true
+
+      - name: End-to-end PSBT signing demo (regtest against bitcoind)
+        # Marked continue-on-error: true initially. The script self-skips
+        # (exit 0) if bitcoind is unavailable, so this only fails when
+        # bitcoind IS installed but the round-trip breaks.
+        continue-on-error: true
+        run: ./scripts/demo.sh

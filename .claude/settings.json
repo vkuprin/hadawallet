@@ -79,7 +79,9 @@
       "Read(//opt/homebrew/include/**)",
       "Bash(grep -E \"context_static|context_no_precomp|context_create\" /opt/homebrew/include/secp256k1.h | head -15)",
       "Read(//opt/homebrew/Cellar/secp256k1/0.7.1/include/**)",
-      "Bash(PATH=__TRACKED_VAR__/.alire/bin:__TRACKED_VAR__ alr exec -- gnatprove -P hadawallet.gpr --level=4 --report=all)"
+      "Bash(PATH=__TRACKED_VAR__/.alire/bin:__TRACKED_VAR__ alr exec -- gnatprove -P hadawallet.gpr --level=4 --report=all)",
+      "Bash(./bin/hadawallet --smoke)",
+      "Bash(HADAWALLET_MNEMONIC_FILE=/tmp/no-such-file HADAWALLET_PRIVKEY_FILE=/tmp/no-such-file ./bin/hadawallet --address regtest)"
     ],
     "additionalDirectories": [
       "/tmp"

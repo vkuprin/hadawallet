@@ -14,6 +14,7 @@ with Hashing;
 with Address;
 with Signing;
 with Transaction;
+with Key_Derivation;
 
 procedure Test_Main is
 
@@ -255,6 +256,77 @@ procedure Test_Main is
                        = Tx.Inputs (1).Witness_Spk.Bytes (1 .. 22));
    end Test_PSBT;
 
+   ---------------------------------------------------------------------------
+   --  BIP39 mnemonic-to-seed (Trezor test vectors)
+   ---------------------------------------------------------------------------
+
+   procedure Test_BIP39;
+   procedure Test_BIP39 is
+      Seed     : Hadawallet.Mac_Bytes_512;
+      Mnemonic : constant String :=
+        "abandon abandon abandon abandon abandon abandon "
+        & "abandon abandon abandon abandon abandon about";
+   begin
+      Key_Derivation.Mnemonic_To_Seed (Mnemonic, "TREZOR", Seed);
+      Check ("BIP39 abandon*11/about+TREZOR seed",
+             Seed = Hadawallet.Mac_Bytes_512 (From_Hex
+               ("c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708"
+                & "e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81"
+                & "b2f001698e7463b04")));
+
+      Key_Derivation.Mnemonic_To_Seed (Mnemonic, "", Seed);
+      Check ("BIP39 abandon*11/about+empty seed",
+             Seed = Hadawallet.Mac_Bytes_512 (From_Hex
+               ("5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6"
+                & "f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3"
+                & "d8d48b2d2ce9e38e4")));
+   end Test_BIP39;
+
+   ---------------------------------------------------------------------------
+   --  BIP84: end-to-end mnemonic -> bc1q address (BIP84 spec test vector)
+   ---------------------------------------------------------------------------
+
+   procedure Test_BIP84;
+   procedure Test_BIP84 is
+      Mnemonic : constant String :=
+        "abandon abandon abandon abandon abandon abandon "
+        & "abandon abandon abandon abandon abandon about";
+      Path : constant Hadawallet.Derivation_Path :=
+        [Hadawallet.Path_Element (16#80000054#),   --  84'
+         Hadawallet.Path_Element (16#80000000#),   --  0'
+         Hadawallet.Path_Element (16#80000000#),   --  0'
+         Hadawallet.Path_Element (0),
+         Hadawallet.Path_Element (0)];
+      Seed         : Hadawallet.Mac_Bytes_512;
+      Master_Priv  : Hadawallet.Privkey_Bytes;
+      Master_Chain : Hadawallet.Chain_Code;
+      Child_Priv   : Hadawallet.Privkey_Bytes;
+      Child_Chain  : Hadawallet.Chain_Code;
+      Pubkey       : Hadawallet.Pubkey_Bytes;
+      Pub_Ok       : Boolean;
+      Addr_Buf     : String (1 .. Hadawallet.Max_Address_Length);
+      Addr_Len     : Hadawallet.Address_Length;
+      Addr_Ok      : Boolean;
+   begin
+      Key_Derivation.Mnemonic_To_Seed (Mnemonic, "", Seed);
+      Key_Derivation.Master_Key_From_Seed (Seed, Master_Priv, Master_Chain);
+      Key_Derivation.Derive_Path
+        (Master_Priv, Master_Chain, Path, Child_Priv, Child_Chain);
+
+      Signing.Pubkey_From_Privkey (Child_Priv, Pubkey, Pub_Ok);
+      Check ("BIP84 m/84'/0'/0'/0/0 pubkey derivation succeeds", Pub_Ok);
+      Check ("BIP84 m/84'/0'/0'/0/0 pubkey matches spec",
+             Pubkey = Hadawallet.Pubkey_Bytes (From_Hex
+               ("0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5"
+                & "f0753bf5beef9c2d91af3c")));
+
+      Address.Pubkey_To_Address
+        (Pubkey, Hadawallet.Bitcoin_Mainnet, Addr_Buf, Addr_Len, Addr_Ok);
+      Check ("BIP84 m/84'/0'/0'/0/0 bech32 address",
+             Addr_Ok and then Addr_Buf (1 .. Addr_Len)
+                          = "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu");
+   end Test_BIP84;
+
 begin
    Ada.Text_IO.Put_Line ("hadawallet test suite");
    Ada.Text_IO.Put_Line ("---------------------");
@@ -264,6 +336,8 @@ begin
    Test_Bech32;
    Test_ECDSA;
    Test_PSBT;
+   Test_BIP39;
+   Test_BIP84;
    Ada.Text_IO.Put_Line ("---------------------");
    if Failures = 0 then
       Ada.Text_IO.Put_Line ("ALL TESTS PASSED");

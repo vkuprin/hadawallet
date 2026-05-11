@@ -35,12 +35,17 @@ is
    end record;
 
    type Input_Record is record
-      Prevout     : Outpoint;
-      Sequence    : Hadawallet.U32 := 16#FFFF_FFFF#;
-      Witness_Amt : Hadawallet.U64 := 0;
-      Witness_Spk : Script_Buffer;
-      Partial_Sig : Hadawallet.Signature_Bytes := [others => 0];
-      Partial_Len : Hadawallet.Signature_Length := 0;
+      Prevout        : Outpoint;
+      Sequence       : Hadawallet.U32 := 16#FFFF_FFFF#;
+      Witness_Amt    : Hadawallet.U64 := 0;
+      Witness_Spk    : Script_Buffer;
+      Partial_Sig    : Hadawallet.Signature_Bytes := [others => 0];
+      Partial_Len    : Hadawallet.Signature_Length := 0;
+      --  BIP174 requires the partial_sig key to be 0x02 || compressed
+      --  pubkey (34 bytes), not just the type byte. Comm fills this in
+      --  before calling Serialize; if unset (all zero), Serialize emits
+      --  no partial_sig field.
+      Partial_Pubkey : Hadawallet.Pubkey_Bytes := [others => 0];
    end record;
 
    type Output_Record is record

@@ -710,9 +710,15 @@ is
          end if;
 
          if Tx.Inputs (I).Partial_Len > 0 then
-            Put_Varint (Output, Idx, 1);
+            --  BIP174 partial_sig key: 0x02 || compressed pubkey (34 B).
+            Put_Varint (Output, Idx, 34);
             Output (Idx) := 16#02#;
             Idx := Idx + 1;
+            Put_Bytes
+              (Output,
+               Idx,
+               Hadawallet.Byte_Array (Tx.Inputs (I).Partial_Pubkey));
+            --  Value: DER signature || SIGHASH_ALL byte.
             Put_Varint
               (Output, Idx, Hadawallet.U64 (Tx.Inputs (I).Partial_Len) + 1);
             Put_Bytes

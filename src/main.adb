@@ -1,15 +1,22 @@
 --  hadawallet entry point.
 --
 --  Modes:
---    (no args)    : sign-mode. Reads a PSBT on stdin, signs each input
---                   (P2WPKH only), writes a signed PSBT on stdout.
---                   Privkey is loaded from $HADAWALLET_PRIVKEY_FILE or
---                   ~/.hadawallet/key.bin (32 raw bytes).
---    --smoke      : runs all module smoke tests against known vectors.
---    --fixture    : emits a minimal unsigned-but-witness-utxo-populated
---                   PSBT to stdout for the offline demo. The corresponding
---                   privkey is the canonical secp256k1 generator-point
---                   privkey (0x01..0x01).
+--    (no args)               : sign-mode. Reads a PSBT on stdin, signs
+--                              each input (P2WPKH only), writes a signed
+--                              PSBT on stdout. Privkey is resolved via
+--                              Comm.Load_Active_Privkey (mnemonic first,
+--                              then raw-bytes file fallback).
+--    --smoke                 : runs all module smoke tests against known
+--                              vectors.
+--    --fixture               : emits a minimal unsigned-but-
+--                              witness-utxo-populated PSBT to stdout for
+--                              the offline demo. The corresponding
+--                              privkey is the canonical secp256k1
+--                              generator-point privkey (0x01..0x01).
+--    --address [<network>]   : derives the active privkey's BIP173
+--                              bech32 P2WPKH address and prints it.
+--                              <network> in {mainnet, testnet, regtest};
+--                              default mainnet.
 
 with Ada.Text_IO;
 with Ada.Command_Line;
@@ -72,6 +79,7 @@ procedure Main is
 
    procedure Run_Smoke;
    procedure Emit_Fixture;
+   procedure Emit_Address (Net : Hadawallet.Network);
 
    ---------------------------------------------------------------------------
    --  --smoke
@@ -226,6 +234,44 @@ procedure Main is
       end if;
    end Emit_Fixture;
 
+   ---------------------------------------------------------------------------
+   --  --address
+   ---------------------------------------------------------------------------
+
+   procedure Emit_Address (Net : Hadawallet.Network) is
+      Privkey  : Hadawallet.Privkey_Bytes;
+      Pubkey   : Hadawallet.Pubkey_Bytes;
+      Key_Ok   : Boolean;
+      Pub_Ok   : Boolean;
+      Addr_Buf : String (1 .. Hadawallet.Max_Address_Length);
+      Addr_Len : Hadawallet.Address_Length;
+      Addr_Ok  : Boolean;
+   begin
+      Comm.Load_Active_Privkey (Privkey, Key_Ok);
+      if not Key_Ok then
+         Ada.Command_Line.Set_Exit_Status (1);
+         return;
+      end if;
+      Signing.Pubkey_From_Privkey (Privkey, Pubkey, Pub_Ok);
+      Privkey := [others => 0];
+      if not Pub_Ok then
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error,
+            "hadawallet: --address pubkey derivation failed");
+         Ada.Command_Line.Set_Exit_Status (1);
+         return;
+      end if;
+      Address.Pubkey_To_Address (Pubkey, Net, Addr_Buf, Addr_Len, Addr_Ok);
+      if not Addr_Ok then
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error,
+            "hadawallet: --address bech32 encode failed");
+         Ada.Command_Line.Set_Exit_Status (1);
+         return;
+      end if;
+      Ada.Text_IO.Put_Line (Addr_Buf (1 .. Addr_Len));
+   end Emit_Address;
+
 begin
    if Ada.Command_Line.Argument_Count >= 1 then
       declare
@@ -237,13 +283,40 @@ begin
          elsif Arg = "--fixture" then
             Emit_Fixture;
             return;
+         elsif Arg = "--address" then
+            declare
+               Net : Hadawallet.Network := Hadawallet.Bitcoin_Mainnet;
+            begin
+               if Ada.Command_Line.Argument_Count >= 2 then
+                  declare
+                     A2 : constant String := Ada.Command_Line.Argument (2);
+                  begin
+                     if A2 = "mainnet" then
+                        Net := Hadawallet.Bitcoin_Mainnet;
+                     elsif A2 = "testnet" then
+                        Net := Hadawallet.Bitcoin_Testnet;
+                     elsif A2 = "regtest" then
+                        Net := Hadawallet.Bitcoin_Regtest;
+                     else
+                        Ada.Text_IO.Put_Line
+                          (Ada.Text_IO.Standard_Error,
+                           "hadawallet: unknown network """ & A2 & """");
+                        Ada.Command_Line.Set_Exit_Status (1);
+                        return;
+                     end if;
+                  end;
+               end if;
+               Emit_Address (Net);
+            end;
+            return;
          else
             Ada.Text_IO.Put_Line
               (Ada.Text_IO.Standard_Error,
                "hadawallet: unknown argument """ & Arg & """");
             Ada.Text_IO.Put_Line
               (Ada.Text_IO.Standard_Error,
-               "usage: hadawallet [--smoke | --fixture]");
+               "usage: hadawallet"
+               & " [--smoke | --fixture | --address [<net>]]");
             Ada.Command_Line.Set_Exit_Status (1);
             return;
          end if;

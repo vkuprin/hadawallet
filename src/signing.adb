@@ -32,6 +32,18 @@ is
       Sig_Len : out Hadawallet.Signature_Length)
    with Global => null, Depends => ((Sig, Sig_Len) => (Privkey, Digest));
 
+   procedure FFI_Tweak_Add
+     (Scalar : in out Hadawallet.Privkey_Bytes;
+      Tweak  : in Hadawallet.Privkey_Bytes;
+      Ok     : out Boolean)
+   with Global => null, Depends => ((Scalar, Ok) => (Scalar, Tweak));
+
+   procedure FFI_Pubkey_Create
+     (Privkey : in Hadawallet.Privkey_Bytes;
+      Pubkey  : out Hadawallet.Pubkey_Bytes;
+      Ok      : out Boolean)
+   with Global => null, Depends => ((Pubkey, Ok) => Privkey);
+
    procedure Load_Privkey (Key : in Hadawallet.Privkey_Bytes)
    with
      Refined_Global  => (Output => (Stored_Key, Key_Is_Loaded)),
@@ -73,6 +85,22 @@ is
       Stored_Key := [others => 0];
       Key_Is_Loaded := False;
    end Wipe;
+
+   procedure Tweak_Add_Scalar
+     (Scalar : in out Hadawallet.Privkey_Bytes;
+      Tweak  : in Hadawallet.Privkey_Bytes;
+      Ok     : out Boolean) is
+   begin
+      FFI_Tweak_Add (Scalar, Tweak, Ok);
+   end Tweak_Add_Scalar;
+
+   procedure Pubkey_From_Privkey
+     (Privkey : in Hadawallet.Privkey_Bytes;
+      Pubkey  : out Hadawallet.Pubkey_Bytes;
+      Ok      : out Boolean) is
+   begin
+      FFI_Pubkey_Create (Privkey, Pubkey, Ok);
+   end Pubkey_From_Privkey;
 
    ---------------------------------------------------------------------------
    --  libsecp256k1 FFI. SPARK_Mode => Off; contract is asserted, not proved.
@@ -160,5 +188,125 @@ is
 
       Context_Destroy (Ctx);
    end FFI_Sign;
+
+   procedure FFI_Tweak_Add
+     (Scalar : in out Hadawallet.Privkey_Bytes;
+      Tweak  : in Hadawallet.Privkey_Bytes;
+      Ok     : out Boolean)
+   is
+      pragma SPARK_Mode (Off);
+      use Interfaces.C;
+      use type System.Address;
+
+      SECP256K1_CONTEXT_NONE : constant unsigned := 1;
+
+      function Context_Create (Flags : unsigned) return System.Address
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_context_create";
+
+      procedure Context_Destroy (Ctx : System.Address)
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_context_destroy";
+
+      function Ec_Seckey_Tweak_Add
+        (Ctx : System.Address; Seckey : System.Address; Tweak : System.Address)
+         return int
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_ec_seckey_tweak_add";
+
+      Ctx : System.Address;
+      Rc  : int;
+   begin
+      Ok := False;
+      Ctx := Context_Create (SECP256K1_CONTEXT_NONE);
+      if Ctx = System.Null_Address then
+         return;
+      end if;
+      Rc := Ec_Seckey_Tweak_Add (Ctx, Scalar'Address, Tweak'Address);
+      Ok := Rc = 1;
+      Context_Destroy (Ctx);
+   end FFI_Tweak_Add;
+
+   procedure FFI_Pubkey_Create
+     (Privkey : in Hadawallet.Privkey_Bytes;
+      Pubkey  : out Hadawallet.Pubkey_Bytes;
+      Ok      : out Boolean)
+   is
+      pragma SPARK_Mode (Off);
+      use Interfaces.C;
+      use type System.Address;
+
+      SECP256K1_CONTEXT_NONE  : constant unsigned := 1;
+      --  SECP256K1_EC_COMPRESSED = (1 << 1) | (1 << 8) = 0x102 = 258
+      SECP256K1_EC_COMPRESSED : constant unsigned := 258;
+
+      function Context_Create (Flags : unsigned) return System.Address
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_context_create";
+
+      procedure Context_Destroy (Ctx : System.Address)
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_context_destroy";
+
+      function Ec_Pubkey_Create
+        (Ctx    : System.Address;
+         Pubkey : System.Address;
+         Seckey : System.Address) return int
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_ec_pubkey_create";
+
+      function Ec_Pubkey_Serialize
+        (Ctx        : System.Address;
+         Output     : System.Address;
+         Output_Len : access size_t;
+         Pubkey     : System.Address;
+         Flags      : unsigned) return int
+      with
+        Import        => True,
+        Convention    => C,
+        External_Name => "secp256k1_ec_pubkey_serialize";
+
+      Ctx          : System.Address;
+      Internal_Pub : array (0 .. 63) of unsigned_char
+      with Convention => C;
+      Out_Len      : aliased size_t := 33;
+      Rc           : int;
+   begin
+      Pubkey := [others => 0];
+      Ok := False;
+
+      Ctx := Context_Create (SECP256K1_CONTEXT_NONE);
+      if Ctx = System.Null_Address then
+         return;
+      end if;
+
+      Rc := Ec_Pubkey_Create (Ctx, Internal_Pub'Address, Privkey'Address);
+      if Rc /= 1 then
+         Context_Destroy (Ctx);
+         return;
+      end if;
+
+      Rc :=
+        Ec_Pubkey_Serialize
+          (Ctx,
+           Pubkey'Address,
+           Out_Len'Access,
+           Internal_Pub'Address,
+           SECP256K1_EC_COMPRESSED);
+      Ok := Rc = 1 and then Out_Len = 33;
+      Context_Destroy (Ctx);
+   end FFI_Pubkey_Create;
 
 end Signing;

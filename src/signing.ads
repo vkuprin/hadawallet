@@ -50,4 +50,29 @@ is
    procedure Wipe
    with Global => (Output => Key_State), Depends => (Key_State => null);
 
+   --  BIP32 helper: scalar add modulo secp256k1 group order n.
+   --  In-place: Scalar := (Scalar + Tweak) mod n.
+   --  Ok = False if either operand is >= n or the result is zero.
+   --
+   --  Provided here because Signing is the only module that talks to
+   --  libsecp256k1 (architecture invariant #3). Key_Derivation calls this
+   --  to compute non-hardened BIP32 child privkeys. The operation touches
+   --  caller-provided buffers only — Key_State is NOT read or written, so
+   --  the key-isolation flow proof is unaffected.
+   procedure Tweak_Add_Scalar
+     (Scalar : in out Hadawallet.Privkey_Bytes;
+      Tweak  : in Hadawallet.Privkey_Bytes;
+      Ok     : out Boolean)
+   with Global => null, Depends => ((Scalar, Ok) => (Scalar, Tweak));
+
+   --  Derive the compressed (33-byte) public key for a caller-provided
+   --  privkey via libsecp256k1. Public keys are public information; this
+   --  does NOT read Key_State. Used by Key_Derivation for non-hardened
+   --  BIP32 CKDpriv (which needs the parent's pubkey as HMAC input).
+   procedure Pubkey_From_Privkey
+     (Privkey : in Hadawallet.Privkey_Bytes;
+      Pubkey  : out Hadawallet.Pubkey_Bytes;
+      Ok      : out Boolean)
+   with Global => null, Depends => ((Pubkey, Ok) => Privkey);
+
 end Signing;

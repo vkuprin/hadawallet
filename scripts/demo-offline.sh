@@ -49,12 +49,12 @@ if [ "$MAGIC" != "70736274ff" ]; then
   exit 1
 fi
 
-# Look for partial_sig key (0x02) byte in the per-input map. A bare key
-# of length 1 followed by 0x02 then a varint length and DER data.
-if ! xxd -p "$SIGNED" | tr -d '\n' | grep -q "0102"; then
-  echo "error: partial_sig key (01 02) not found in signed PSBT" >&2
+# Look for BIP174 partial_sig key: varint(34) || 0x02 || 33-byte pubkey.
+# We check for the prefix "22 02" — key length 34 followed by type 0x02.
+if ! xxd -p "$SIGNED" | tr -d '\n' | grep -q "2202"; then
+  echo "error: BIP174 partial_sig key (22 02) not found in signed PSBT" >&2
   exit 1
 fi
 
-echo "==> OK: signed PSBT carries a partial_sig under input map key 0x02"
-echo "==> proof: gnatprove --level=4 reports 15/15 (100%) checks proved on Signing"
+echo "==> OK: signed PSBT carries a BIP174 partial_sig under input key 0x02"
+echo "==> proof: gnatprove --level=4 reports 22/22 (100%) checks proved on Signing"

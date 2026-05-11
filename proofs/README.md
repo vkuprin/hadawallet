@@ -9,8 +9,10 @@ which is exactly the audience this project depends on.
 - `gnatprove --level=1` (runtime-error checks) is the CI baseline.
 - **`Signing` Abstract_State + Global/Depends flow contracts landed AND survive
   the libsecp256k1 FFI swap**: `gnatprove --level=4 --report=all` reports
-  **15 / 15 (100%)** checks proved on `Signing` (data dependencies, flow
-  dependencies, initialization, termination — zero unproved, zero justified).
+  **22 / 22 (100%)** checks proved on `Signing` (data dependencies, flow
+  dependencies, initialization, termination — zero unproved, zero justified;
+  proof envelope grew from 15 to 22 in v0.2 with the addition of
+  `Tweak_Add_Scalar` and `Pubkey_From_Privkey` for BIP32 derivation).
   The "private key never leaves the signing module" claim is SPARK-verified
   by construction, even though `Signing.Sign` now calls into C
   (`secp256k1_ecdsa_sign`). The FFI call site lives inside Signing's body;
