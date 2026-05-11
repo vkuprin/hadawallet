@@ -449,6 +449,83 @@ procedure Test_Main is
       Secp256k1.Field.Sub (F, G, H);
       Secp256k1.Field.To_Be32 (H, Roundtrip);
       Check ("Field 0 - 1 = p - 1", Roundtrip = P_Minus_1);
+
+      ---------------------------------------------------------------
+      --  Mul vectors
+      ---------------------------------------------------------------
+
+      --  2 * 3 = 6
+      Secp256k1.Field.From_Be32 (Two, F, Ok);
+      Secp256k1.Field.From_Be32 (Three, G, Ok);
+      Secp256k1.Field.Mul (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field 2 * 3 = 6",
+             Roundtrip = Hadawallet.Byte_Array
+               (From_Hex
+                  ("0000000000000000000000000000000000000000000000000000000000000006")));
+
+      --  1 * 1 = 1 (multiplicative identity).
+      Secp256k1.Field.From_Be32 (One, F, Ok);
+      Secp256k1.Field.From_Be32 (One, G, Ok);
+      Secp256k1.Field.Mul (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field 1 * 1 = 1", Roundtrip = One);
+
+      --  (p-1) * 1 = p - 1
+      Secp256k1.Field.From_Be32 (P_Minus_1, F, Ok);
+      Secp256k1.Field.From_Be32 (One, G, Ok);
+      Secp256k1.Field.Mul (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field (p-1) * 1 = p - 1", Roundtrip = P_Minus_1);
+
+      --  (p-1) * (p-1) = 1 mod p
+      --  Because (p-1) ≡ -1 mod p, so (-1)*(-1) = 1.
+      Secp256k1.Field.From_Be32 (P_Minus_1, F, Ok);
+      Secp256k1.Field.From_Be32 (P_Minus_1, G, Ok);
+      Secp256k1.Field.Mul (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field (p-1) * (p-1) = 1 mod p", Roundtrip = One);
+
+      --  Sqr is just Mul (a, a).
+      Secp256k1.Field.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+           ("0000000000000000000000000000000000000000000000000000000000000005")),
+         F, Ok);
+      Secp256k1.Field.Sqr (F, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field Sqr(5) = 25",
+             Roundtrip = Hadawallet.Byte_Array
+               (From_Hex
+                  ("0000000000000000000000000000000000000000000000000000000000000019")));
+
+      ---------------------------------------------------------------
+      --  Inv vectors (a * a^-1 = 1 mod p)
+      ---------------------------------------------------------------
+
+      --  Inv(1) = 1
+      Secp256k1.Field.From_Be32 (One, F, Ok);
+      Secp256k1.Field.Inv (F, H, Ok);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field Inv(1) = 1", Ok and then Roundtrip = One);
+
+      --  Inv(7) computed; verify 7 * Inv(7) = 1.
+      Secp256k1.Field.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+           ("0000000000000000000000000000000000000000000000000000000000000007")),
+         F, Ok);
+      Secp256k1.Field.Inv (F, G, Ok);
+      Check ("Field Inv(7) succeeds", Ok);
+      Secp256k1.Field.Mul (F, G, H);
+      Secp256k1.Field.To_Be32 (H, Roundtrip);
+      Check ("Field 7 * Inv(7) = 1", Roundtrip = One);
+
+      --  Inv(0) returns failure.
+      Secp256k1.Field.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+           ("0000000000000000000000000000000000000000000000000000000000000000")),
+         F, Ok);
+      Secp256k1.Field.Inv (F, H, Ok);
+      Check ("Field Inv(0) rejected", not Ok);
    end Test_Field;
 
    ---------------------------------------------------------------------------
