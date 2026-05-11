@@ -137,6 +137,34 @@ boot, side-channel hardening, pure-SPARK secp256k1, UTF-8 NFKD
 normalization of non-ASCII mnemonics (English BIP39 wordlist + ASCII
 passphrase only).
 
+## Backends
+
+`hadawallet.gpr` exposes a `BACKEND` scenario variable:
+
+- `BACKEND=c` (default) — `Signing` body is the libsecp256k1 FFI at
+  [src/backend_c/signing.adb](src/backend_c/signing.adb). This is the
+  production path; SPARK level-4 reports 22/22.
+- `BACKEND=ada` — `Signing` body is the in-tree
+  [src/backend_ada/signing.adb](src/backend_ada/signing.adb) (Phase D
+  skeleton). `Sign` currently returns `Length := 0`; needed for the
+  STM32 cross-build where no `libsecp256k1.a` exists for `arm-eabi`.
+  Real curve math lands when [src/secp256k1/](src/secp256k1/) is
+  fleshed out — see the project plan for the 3–4 month roadmap.
+
+```bash
+alr build                          # BACKEND=c (default), links libsecp256k1
+BACKEND=ada alr build              # no C library linked; Sign returns 0
+```
+
+## STM32F411 Nucleo (scaffolding)
+
+`hadawallet_stm32.gpr` cross-compiles a Cortex-M4F firmware that
+prints a boot banner over USART2 and runs the SHA-256 FIPS-180-4
+self-test. See [docs/stm32-quickstart.md](docs/stm32-quickstart.md)
+for the toolchain + flashing procedure. **Status: scaffolding** —
+not yet validated on real hardware, and signing on hardware is
+blocked on Phase D's pure-SPARK secp256k1.
+
 ## License
 
 AGPL-3.0-or-later for the open-source release — see [LICENSE](LICENSE).

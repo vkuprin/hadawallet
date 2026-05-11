@@ -1,0 +1,69 @@
+--  hadawallet_stm32.gpr — bare-metal cross-build for STM32F411 Nucleo.
+--
+--  USAGE:
+--    alr toolchain --select gnat_arm_elf
+--    alr build -P hadawallet_stm32.gpr
+--
+--  TARGET: arm-eabi (Cortex-M4F). The runtime is the embedded "light"
+--  profile shipped with gnat_arm_elf. We force BACKEND=ada in this
+--  GPR — there is no libsecp256k1.a for arm-eabi, so the firmware
+--  cannot sign until Phase D's pure-SPARK secp256k1 lands. See
+--  src/backend_ada/signing.adb (current Sign returns Length := 0).
+--
+--  STATUS: scaffolding. Not yet validated on a real Nucleo board.
+--  See docs/stm32-quickstart.md for the flashing procedure.
+
+project Hadawallet_Stm32 is
+
+   for Languages use ("Ada");
+   for Target   use "arm-eabi";
+   for Runtime ("Ada") use "light-cortex-m4f";
+
+   --  STM32 firmware draws from a narrower source set than the native
+   --  build: no Comm (host I/O), no main.adb (replaced by main_stm32),
+   --  no Transaction (PSBT parser pulls in too much for v0.2 budget).
+   for Source_Dirs use ("src", "src/secp256k1", "src/backend_ada", "src/stm32");
+   for Source_Files use
+     ("hadawallet.ads",
+      "hashing.ads", "hashing.adb",
+      "address.ads", "address.adb",
+      "key_derivation.ads", "key_derivation.adb",
+      "signing.ads", "signing.adb",
+      "secp256k1.ads",
+      "uart.ads", "uart.adb",
+      "startup_stm32f411.ads", "startup_stm32f411.adb",
+      "main_stm32.adb");
+
+   for Object_Dir use "obj-stm32";
+   for Exec_Dir   use "bin";
+   for Create_Missing_Dirs use "True";
+   for Main use ("main_stm32.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use
+        ("-g",
+         "-Os",            --  size-optimize for flash budget
+         "-mcpu=cortex-m4",
+         "-mfpu=fpv4-sp-d16",
+         "-mfloat-abi=hard",
+         "-mthumb",
+         "-ffunction-sections",
+         "-fdata-sections",
+         "-gnatwa",
+         "-gnata",
+         "-gnat2022");
+   end Compiler;
+
+   package Builder is
+      for Executable ("main_stm32.adb") use "hadawallet_stm32.elf";
+   end Builder;
+
+   package Linker is
+      for Switches ("Ada") use
+        ("-T../src/stm32/stm32f411.ld",
+         "-Wl,--gc-sections",
+         "-Wl,-Map=bin/hadawallet_stm32.map",
+         "-nostartfiles");   --  Reset_Handler comes from startup_stm32f411
+   end Linker;
+
+end Hadawallet_Stm32;

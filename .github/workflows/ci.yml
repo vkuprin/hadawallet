@@ -83,3 +83,52 @@ jobs:
         # bitcoind IS installed but the round-trip breaks.
         continue-on-error: true
         run: ./scripts/demo.sh
+
+      - name: BACKEND=ada native build (Phase D skeleton plumbing)
+        # Verifies the Signing body alternation works: BACKEND=ada
+        # builds and links without libsecp256k1. Sign returns
+        # Length=0 — see src/backend_ada/signing.adb.
+        run: |
+          BACKEND=ada alr -n build
+          # Confirm libsecp256k1 is NOT in the link.
+          if ldd bin/hadawallet 2>/dev/null | grep -q secp256k1; then
+            echo "error: BACKEND=ada link contains libsecp256k1" >&2
+            exit 1
+          fi
+
+  cross-build-stm32:
+    runs-on: ubuntu-latest
+    # Phase C scaffolding. continue-on-error: until validated on real
+    # hardware (Nucleo-F411RE) — see docs/stm32-quickstart.md.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Alire
+        uses: alire-project/setup-alire@v3
+
+      - name: Cache Alire toolchains and builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/alire
+            ~/.local/share/alire
+            ~/.alire
+          key: alire-stm32-${{ runner.os }}-${{ hashFiles('alire.toml') }}
+          restore-keys: |
+            alire-stm32-${{ runner.os }}-
+
+      - name: Install gnat_arm_elf cross-toolchain
+        run: |
+          alr index --update-all
+          alr -n toolchain --select gnat_arm_elf=15.2.1 || \
+            alr -n toolchain --select gnat_arm_elf
+          echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
+
+      - name: Cross-build STM32F411 firmware
+        run: |
+          arm-eabi-gcc --version | head -1 || true
+          alr -n build -P hadawallet_stm32.gpr
+
+      - name: Report firmware size
+        run: arm-eabi-size bin/hadawallet_stm32.elf || true

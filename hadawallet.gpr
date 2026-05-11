@@ -2,7 +2,24 @@ project Hadawallet is
 
    for Languages use ("Ada");
 
-   for Source_Dirs use ("src");
+   --  Backend selection: "c" (default) links libsecp256k1; "ada" wires
+   --  the Signing body to the in-tree pure-SPARK secp256k1 module
+   --  (Phase D — currently a stub-quality skeleton; see plan).
+   type Backend_Type is ("c", "ada");
+   Backend : Backend_Type := external ("BACKEND", "c");
+
+   --  Source layout: shared modules live in src/ and src/secp256k1/;
+   --  the Signing body alternates between src/backend_c/ (FFI) and
+   --  src/backend_ada/ (pure-SPARK). The src/stm32/ tree belongs to
+   --  hadawallet_stm32.gpr only.
+   case Backend is
+      when "c"   => for Source_Dirs use ("src", "src/secp256k1",
+                                          "src/backend_c");
+      when "ada" => for Source_Dirs use ("src", "src/secp256k1",
+                                          "src/backend_ada");
+   end case;
+   for Excluded_Source_Dirs use ("src/stm32");
+
    for Object_Dir use "obj";
    for Exec_Dir use "bin";
    for Create_Missing_Dirs use "True";
@@ -27,10 +44,16 @@ project Hadawallet is
    end Binder;
 
    package Linker is
-      for Switches ("Ada") use
-        ("-L/opt/homebrew/lib",   --  macOS Homebrew prefix
-         "-L/usr/local/lib",      --  Linux distro default
-         "-lsecp256k1");          --  Bitcoin Core reference impl
+      case Backend is
+         when "c" =>
+            for Switches ("Ada") use
+              ("-L/opt/homebrew/lib",   --  macOS Homebrew prefix
+               "-L/usr/local/lib",      --  Linux distro default
+               "-lsecp256k1");          --  Bitcoin Core reference impl
+         when "ada" =>
+            --  Pure-SPARK backend: no C library is linked.
+            for Switches ("Ada") use ();
+      end case;
    end Linker;
 
    package Prove is
