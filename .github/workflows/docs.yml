@@ -34,14 +34,21 @@ jobs:
           restore-keys: |
             alire-${{ runner.os }}-
 
-      - name: Install gnatdoc
+      - name: Install gnatdoc (direct from GNAT-FSF-builds release)
         run: |
-          alr index --update-all
-          alr -n install gnatdoc_bin
-          echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
-        # The setup-alire@v3 action ships a snapshot Alire catalog; refresh
-        # it so we resolve the current gnatdoc_bin crate (otherwise:
-        # "Could not find a complete solution for gnatdoc_bin*").
+          set -euo pipefail
+          GNATDOC_VERSION="26.0.0-1"
+          ASSET="gnatdoc-x86_64-linux-${GNATDOC_VERSION}.tar.gz"
+          URL="https://github.com/alire-project/GNAT-FSF-builds/releases/download/gnatdoc-${GNATDOC_VERSION}/${ASSET}"
+          mkdir -p "$HOME/.local/gnatdoc"
+          curl -fsSL "$URL" | tar -xz -C "$HOME/.local/gnatdoc" --strip-components=1
+          echo "$HOME/.local/gnatdoc/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/gnatdoc/bin/gnatdoc" --version || true
+        # We bypass `alr install gnatdoc_bin` because setup-alire@v3 ships an
+        # older alr whose snapshot catalog doesn't have gnatdoc_bin 26.0.0
+        # ("Could not find a complete solution for gnatdoc_bin*"). The
+        # tarball below is the *same* artifact Alire would have fetched —
+        # we just skip the resolution layer.
 
       - name: Generate docs
         run: ./scripts/docs.sh
