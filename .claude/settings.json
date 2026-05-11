@@ -63,7 +63,14 @@
       "Bash(git reset *)",
       "Bash(git mv *)",
       "Bash(rm -rf dist-actor)",
-      "Bash(SKIP_BUNDLE_INSTALL=1 yarn prepush)"
+      "Bash(SKIP_BUNDLE_INSTALL=1 yarn prepush)",
+      "Bash(alr build *)",
+      "Bash(PATH=__TRACKED_VAR__/.alire/bin:__TRACKED_VAR__ alr exec -- gnatprove -P hadawallet.gpr --level=4 --report=all -u signing.adb)",
+      "Bash(PATH=__TRACKED_VAR__/.alire/bin:__TRACKED_VAR__ alr exec -- gnatprove -P hadawallet.gpr --level=4 --report=fail)",
+      "Bash(./bin/hadawallet)",
+      "Bash(./scripts/lint.sh)",
+      "Bash(./scripts/fmt.sh)",
+      "Bash(alr exec *)"
     ],
     "additionalDirectories": [
       "/tmp"

@@ -36,7 +36,7 @@ alr build
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │  Comm (stdin/stdout I/O loop)              [boundary]        │
 │   ↓ psbt_bytes                ↑ signature_bytes              │

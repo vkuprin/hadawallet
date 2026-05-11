@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (private disclosure)
+    url: https://github.com/vkuprins/hadawallet/security/advisories/new
+    about: |
+      DO NOT file public issues for security problems. Use GitHub's private
+      vulnerability reporting or follow the channel in SECURITY.md.
+  - name: Out-of-scope feature request
+    url: https://github.com/vkuprins/hadawallet/blob/main/CLAUDE.md
+    about: |
+      Multisig, taproot, USB, BLE, GUI, altcoins are explicitly out of
+      scope for v0.1–v0.2. Read "Scope discipline" before opening an issue.

@@ -1,6 +1,5 @@
 obj/
 bin/
-alire/
 config/
 gnatprove/
 *.o
@@ -9,3 +8,19 @@ gnatprove/
 *.adb~
 *.ads~
 .DS_Store
+
+# Alire: ignore build state but COMMIT the lockfile for reproducible builds.
+alire/*
+!alire/alire.lock
+
+# Node (markdownlint via npx)
+node_modules/
+
+# Coverage artifacts
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# gnatdoc output (generated; published via GitHub Pages)
+docs/

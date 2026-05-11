@@ -62,14 +62,12 @@ Revisit if/when ACI ships an Ada grammar.
 5. **Edit** — Serena: `replace_symbol_body`, `insert_after_symbol` for precise changes
 6. **Verify** — `alr build` + `gnatprove --level=1 --report=fail` (see Build section)
 
-
-
 ## What this is
 
 Formally verified Bitcoin hardware wallet firmware in SPARK/Ada. Headline claim:
 "the private key never leaves the signing module" via SPARK flow analysis.
 
-## Build / prove / test
+## Build / prove / test / lint
 
 ```bash
 alr build                                                       # GNAT build
@@ -77,7 +75,23 @@ alr exec -- gnatprove -P hadawallet.gpr --level=1 --report=fail # baseline (v0.1
 alr exec -- gnatprove -P hadawallet.gpr --level=4 --report=all  # full proofs (v0.2)
 alr test                                                         # unit tests (week 2+)
 ./scripts/demo.sh                                                # E2E with bitcoind regtest (week 4)
+
+./scripts/fmt.sh                                                 # apply gnatformat (Prettier equivalent)
+./scripts/lint.sh                                                # format check + -gnatyy -gnatwa -gnatwe (ESLint equivalent)
+./scripts/install-hooks.sh                                       # one-time: wire .githooks/pre-commit
 ```
+
+## Formatting & linting
+
+- **Formatter**: `gnatformat` (AdaCore's opinionated Prettier-style formatter).
+  Installed via `alr install gnatformat`; same pattern as `gnatprove`.
+- **Linter**: GNAT built-in `-gnatyy` (style) + `-gnatwa -gnatwe` (all warnings,
+  as errors) invoked separately from the normal build so dev compilation isn't
+  blocked. `gnatcheck` would be the ideal ESLint analogue but isn't in Alire
+  yet — revisit when AdaCore ships `lkql-jit` / `gnatcheck` as a crate.
+- **Pre-commit**: `./scripts/install-hooks.sh` sets `core.hooksPath=.githooks`;
+  the hook only fires when `.adb` / `.ads` / `.gpr` / `.toml` files are staged.
+- **CI**: lint runs before build/prove in `.github/workflows/ci.yml`.
 
 ## Architecture invariants — DO NOT BREAK
 

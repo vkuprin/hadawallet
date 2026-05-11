@@ -1,0 +1,13 @@
+{
+  "config": { "extends": ".markdownlint.jsonc" },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "alire/**",
+    "obj/**",
+    "bin/**",
+    "node_modules/**",
+    "gnatprove/**",
+    ".serena/**",
+    ".claude/**"
+  ]
+}

@@ -8,36 +8,46 @@
 --    and exits the firmware only as the implicit signing-key of a
 --    produced signature — never as raw bytes.
 --
---    SPARK enforcement (week 2 milestone):
---      - Abstract_State => Key_State (encapsulates the key buffer)
---      - Sign:    Global => Input  Key_State,  Depends => Sig => (Key_State, Digest)
---      - Wipe:    Global => Output Key_State
---
---  v0.1 ships the API shape. Flow contracts land in week 2 once
---  Abstract_State machinery is wired up.
+--  SPARK enforcement:
+--    The private-key buffer is encapsulated in Abstract_State Key_State.
+--    Every subprogram below declares its Global/Depends flow against
+--    Key_State. No caller can extract key bytes by construction:
+--      - Load_Privkey writes Key_State, depends on Key.
+--      - Sign        reads  Key_State; Signature depends on
+--                    (Key_State, Digest).
+--      - Wipe        writes Key_State, depends on no input.
+--      - Has_Key     reads  Key_State; returns a Boolean only.
+--    Refined_State on the body ties Key_State to the hidden buffer +
+--    loaded flag, so flow analysis can prove no other module reaches them.
 
 with Hadawallet;
 
 package Signing
-  with SPARK_Mode => On
+  with SPARK_Mode => On, Abstract_State => Key_State, Initializes => Key_State
 is
 
    --  Load a 32-byte private key into the module.
    --  Caller is responsible for wiping its own copy after this call.
-   procedure Load_Privkey (Key : in Hadawallet.Privkey_Bytes);
+   procedure Load_Privkey (Key : in Hadawallet.Privkey_Bytes)
+   with Global => (Output => Key_State), Depends => (Key_State => Key);
 
    --  True iff a key has been loaded and not subsequently wiped.
-   function Has_Key return Boolean;
+   function Has_Key return Boolean
+   with Global => (Input => Key_State);
 
    --  Compute deterministic ECDSA signature (RFC 6979) over Digest.
    --  Output is DER-encoded; Length indicates valid byte count.
    --  Length = 0 indicates an error (e.g., no key loaded).
    procedure Sign
-     (Digest    : in     Hadawallet.Digest_Bytes;
-      Signature :    out Hadawallet.Signature_Bytes;
-      Length    :    out Hadawallet.Signature_Length);
+     (Digest    : in Hadawallet.Digest_Bytes;
+      Signature : out Hadawallet.Signature_Bytes;
+      Length    : out Hadawallet.Signature_Length)
+   with
+     Global  => (Input => Key_State),
+     Depends => (Signature => (Key_State, Digest), Length => Key_State);
 
    --  Securely wipe the loaded key.
-   procedure Wipe;
+   procedure Wipe
+   with Global => (Output => Key_State), Depends => (Key_State => null);
 
 end Signing;

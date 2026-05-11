@@ -1,0 +1,11 @@
+# Default owner for everything in this repo.
+*       @vkuprins
+
+# Security-critical paths require maintainer review even from collaborators.
+/src/signing.*            @vkuprins
+/src/key_derivation.*     @vkuprins
+/SECURITY.md              @vkuprins
+/hadawallet.gpr           @vkuprins
+/alire.toml               @vkuprins
+/alire/alire.lock         @vkuprins
+/.github/                 @vkuprins

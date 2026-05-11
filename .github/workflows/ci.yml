@@ -14,10 +14,39 @@ jobs:
       - name: Setup Alire
         uses: alire-project/setup-alire@v3
 
-      - name: Install gnatprove
+      - name: Cache Alire toolchains and builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/alire
+            ~/.local/share/alire
+            ~/.alire
+          key: alire-${{ runner.os }}-${{ hashFiles('alire.toml', 'alire/alire.lock') }}
+          restore-keys: |
+            alire-${{ runner.os }}-
+
+      - name: Install gnatprove + gnatformat + gnatdoc + gnatcov
         run: |
           alr -n install gnatprove
+          alr -n install gnatformat
+          alr -n install gnatdoc_bin
+          alr -n install gnatcov_bin
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
+
+      - name: Install lint helpers (shellcheck, actionlint)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          sudo mv actionlint /usr/local/bin/
+
+      - name: Setup Node (for markdownlint)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Lint (gnatformat + style + shellcheck + actionlint + markdownlint)
+        run: ./scripts/lint.sh
 
       - name: Build
         run: alr -n build

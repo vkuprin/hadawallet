@@ -1,0 +1,11 @@
+{
+  // markdownlint-cli2 config. Run via: npx -y markdownlint-cli2
+  // Line-length (MD013) is disabled — conflicts with the way config-style
+  // docs like CLAUDE.md naturally wrap. Real-content issues stay enabled.
+  "default": true,
+  "MD013": false,
+  "MD024": { "siblings_only": true },
+  "MD033": false,
+  "MD041": false,
+  "MD060": false
+}
