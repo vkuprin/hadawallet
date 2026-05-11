@@ -145,16 +145,36 @@ passphrase only).
   [src/backend_c/signing.adb](src/backend_c/signing.adb). This is the
   production path; SPARK level-4 reports 22/22.
 - `BACKEND=ada` — `Signing` body is the in-tree
-  [src/backend_ada/signing.adb](src/backend_ada/signing.adb) (Phase D
-  skeleton). `Sign` currently returns `Length := 0`; needed for the
-  STM32 cross-build where no `libsecp256k1.a` exists for `arm-eabi`.
-  Real curve math lands when [src/secp256k1/](src/secp256k1/) is
-  fleshed out — see the project plan for the 3–4 month roadmap.
+  [src/backend_ada/signing.adb](src/backend_ada/signing.adb) which
+  delegates to a pure-Ada secp256k1 in [src/secp256k1/](src/secp256k1/).
+  No `libsecp256k1` link.
 
 ```bash
 alr build                          # BACKEND=c (default), links libsecp256k1
-BACKEND=ada alr build              # no C library linked; Sign returns 0
+BACKEND=ada alr build              # no C library linked; pure-Ada path
 ```
+
+**Pure-Ada secp256k1 status (Phase D in progress):**
+
+| Operation                    | Status                                 |
+|------------------------------|----------------------------------------|
+| `Field.{Add,Sub,Mul,Sqr,Inv}` | ✅ Working, vector-tested              |
+| `Scalar.{Add,Sub}`           | ✅ Working                             |
+| `Scalar.{Mul,Inv}`           | ❌ TODO (mod-n reduction pending)      |
+| `Group.Generator`            | ✅                                     |
+| `Group.Scalar_Mul`           | ✅ Working (affine double-and-add)     |
+| `Group.To_Compressed`        | ✅                                     |
+| `Group.From_Compressed`      | ❌ TODO (sqrt mod p pending)           |
+| `Ecdsa.Pubkey_From_Privkey`  | ✅ Working (calls Group.Scalar_Mul)    |
+| `Ecdsa.Tweak_Add_Scalar`     | ✅ Working (BIP32 non-hardened)        |
+| `Ecdsa.Sign`                 | ❌ TODO (needs `Scalar.{Mul,Inv}`)     |
+| `Der.Encode_Signature`       | ✅                                     |
+
+**Cross-backend equality verified**: BIP84 derivation
+`m/84'/0'/0'/0/0` from the canonical "abandon × 11 + about" mnemonic
+produces the identical address `bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu`
+under both backends. All 53 c-backend tests pass; ada-backend has
+3 ECDSA-Sign failures pending the Scalar.Mul/Inv work.
 
 ## STM32F411 Nucleo (scaffolding)
 
