@@ -137,10 +137,15 @@ jobs:
           # without `alr exec` (which would load hadawallet's
           # gnat_native dep instead of the cross toolchain).
           SEARCH_ROOTS="$HOME/.local/share/alire $HOME/.cache/alire $HOME/.alire"
-          ARM_BIN=$(find $SEARCH_ROOTS -name 'arm-eabi-gcc' -type f 2>/dev/null \
+          # Restrict search to bin/ subdirs — `find -name gprbuild`
+          # otherwise matches share/gpr/manifests/gprbuild (a text
+          # manifest, not the executable).
+          ARM_BIN=$(find $SEARCH_ROOTS -path '*/bin/arm-eabi-gcc' \
+                       -type f -executable 2>/dev/null \
                     | head -1 | xargs -r dirname)
-          GPR_BIN=$(find $SEARCH_ROOTS -name 'gprbuild' -type f 2>/dev/null \
-                    | grep -v arm-eabi | head -1 | xargs -r dirname)
+          GPR_BIN=$(find $SEARCH_ROOTS -path '*/bin/gprbuild' \
+                       -type f -executable 2>/dev/null \
+                    | head -1 | xargs -r dirname)
           if [ -z "$ARM_BIN" ] || [ -z "$GPR_BIN" ]; then
             echo "::error::missing toolchain binaries (arm-eabi-gcc=$ARM_BIN, gprbuild=$GPR_BIN)"
             find ~ \( -name 'arm-eabi-gcc*' -o -name 'gprbuild' \) 2>/dev/null | head -30
