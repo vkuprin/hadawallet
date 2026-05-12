@@ -122,17 +122,22 @@ jobs:
           restore-keys: |
             alire-stm32-${{ runner.os }}-
 
-      - name: Install gnat_arm_elf cross-toolchain
+      - name: Install gnat_arm_elf cross-toolchain + gprbuild
         run: |
           alr index --update-all
+          alr -n toolchain --select gprbuild
           alr -n toolchain --select gnat_arm_elf=15.2.1 || \
             alr -n toolchain --select gnat_arm_elf
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
 
       - name: Cross-build STM32F411 firmware
+        # `alr build` only knows about hadawallet.gpr (in alire.toml's
+        # project_files); for the cross GPR we drive gprbuild directly
+        # under `alr exec`, which sets PATH so arm-eabi-* binaries are
+        # reachable from the gnat_arm_elf toolchain crate.
         run: |
-          arm-eabi-gcc --version | head -1 || true
-          alr -n build -P hadawallet_stm32.gpr
+          alr -n exec -- arm-eabi-gcc --version | head -1
+          alr -n exec -- gprbuild -P hadawallet_stm32.gpr -p
 
       - name: Report firmware size
-        run: arm-eabi-size bin/hadawallet_stm32.elf || true
+        run: alr -n exec -- arm-eabi-size bin/hadawallet_stm32.elf || true

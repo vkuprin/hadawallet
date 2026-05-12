@@ -29,7 +29,15 @@ project Hadawallet_Stm32 is
       "address.ads", "address.adb",
       "key_derivation.ads", "key_derivation.adb",
       "signing.ads", "signing.adb",
+      --  Pure-Ada secp256k1 — the full chain that backend_ada/signing.adb
+      --  walks through to produce a signature.
       "secp256k1.ads",
+      "secp256k1-field.ads",  "secp256k1-field.adb",
+      "secp256k1-scalar.ads", "secp256k1-scalar.adb",
+      "secp256k1-group.ads",  "secp256k1-group.adb",
+      "secp256k1-ecdsa.ads",  "secp256k1-ecdsa.adb",
+      "secp256k1-der.ads",    "secp256k1-der.adb",
+      --  Bare-metal entry points + drivers.
       "uart.ads", "uart.adb",
       "startup_stm32f411.ads", "startup_stm32f411.adb",
       "main_stm32.adb");
