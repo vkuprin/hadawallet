@@ -122,47 +122,42 @@ jobs:
           restore-keys: |
             alire-stm32-${{ runner.os }}-
 
-      - name: Install gnat_arm_elf cross-toolchain + gprbuild
+      - name: Install gnat_arm_elf cross-toolchain + AdaCore FSF gprbuild
+        # The standard apt gprbuild's gprconfig knowledge base doesn't
+        # ship arm-eabi entries, so it can't auto-discover the cross
+        # toolchain even with arm-eabi-gcc on PATH. Workaround: pull
+        # the AdaCore FSF gprbuild release directly — its KB knows
+        # arm-eabi. Validated locally in a Linux x86_64 container:
+        # firmware compiles + links to a 3 KB ELF.
         run: |
           alr index --update-all
-          alr -n toolchain --select gprbuild
-          alr -n toolchain --select gnat_arm_elf=15.2.1 || \
-            alr -n toolchain --select gnat_arm_elf
+          alr --force -n toolchain --select gnat_arm_elf || \
+            alr --force -n toolchain --select gnat_arm_elf=15.2.1
 
-          # Locate both arm-eabi-gcc (from gnat_arm_elf) and gprbuild
-          # (from the gprbuild crate). Alire installs toolchain crates
-          # under either ~/.local/share/alire, ~/.cache/alire, or
-          # ~/.alire depending on version. We add their bin dirs to
-          # GITHUB_PATH so subsequent steps can call them directly
-          # without `alr exec` (which would load hadawallet's
-          # gnat_native dep instead of the cross toolchain).
-          SEARCH_ROOTS="$HOME/.local/share/alire $HOME/.cache/alire $HOME/.alire"
-          # Restrict search to bin/ subdirs — `find -name gprbuild`
-          # otherwise matches share/gpr/manifests/gprbuild (a text
-          # manifest, not the executable).
-          ARM_BIN=$(find $SEARCH_ROOTS -path '*/bin/arm-eabi-gcc' \
-                       -type f -executable 2>/dev/null \
-                    | head -1 | xargs -r dirname)
-          GPR_BIN=$(find $SEARCH_ROOTS -path '*/bin/gprbuild' \
-                       -type f -executable 2>/dev/null \
-                    | head -1 | xargs -r dirname)
-          if [ -z "$ARM_BIN" ] || [ -z "$GPR_BIN" ]; then
-            echo "::error::missing toolchain binaries (arm-eabi-gcc=$ARM_BIN, gprbuild=$GPR_BIN)"
-            find ~ \( -name 'arm-eabi-gcc*' -o -name 'gprbuild' \) 2>/dev/null | head -30
+          # Fetch AdaCore FSF gprbuild
+          GPRBUILD_URL="https://github.com/alire-project/GNAT-FSF-builds/releases/download/gprbuild-25.0.0-1/gprbuild-x86_64-linux-25.0.0-1.tar.gz"
+          curl -fsSL "$GPRBUILD_URL" -o /tmp/gprbuild.tgz
+          sudo tar -xzf /tmp/gprbuild.tgz -C /opt
+          GPR_BIN=/opt/gprbuild-x86_64-linux-25.0.0-1/bin
+
+          # Locate cross compiler bin
+          ARM_BIN=$(find "$HOME/.local/share/alire" -path '*/bin/arm-eabi-gcc' \
+                       -type f -executable 2>/dev/null | head -1 | xargs -r dirname)
+          if [ -z "$ARM_BIN" ]; then
+            echo "::error::arm-eabi-gcc not found"
+            find "$HOME" -name 'arm-eabi-gcc' 2>/dev/null | head -5
             exit 1
           fi
-          echo "Cross toolchain bin: $ARM_BIN"
-          echo "gprbuild bin: $GPR_BIN"
-          echo "$ARM_BIN" >> "$GITHUB_PATH"
+
+          echo "FSF gprbuild: $GPR_BIN"
+          echo "Cross toolchain: $ARM_BIN"
           echo "$GPR_BIN" >> "$GITHUB_PATH"
+          echo "$ARM_BIN" >> "$GITHUB_PATH"
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
 
       - name: Cross-build STM32F411 firmware
-        # gprbuild orchestrates: it sees the GPR's `for Target use
-        # "arm-eabi"` and dispatches to arm-eabi-gcc which we just
-        # added to PATH. NOT under `alr exec` — that would re-introduce
-        # the gnat_native conflict.
         run: |
+          gprbuild --version | head -1
           arm-eabi-gcc --version | head -1
           gprbuild -P hadawallet_stm32.gpr -p
 

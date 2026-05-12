@@ -70,7 +70,7 @@ project Hadawallet_Stm32 is
       for Switches ("Ada") use
         ("-T../src/stm32/stm32f411.ld",
          "-Wl,--gc-sections",
-         "-Wl,-Map=bin/hadawallet_stm32.map",
+         "-Wl,-Map=hadawallet_stm32.map",  --  written next to .elf
          "-nostartfiles");   --  Reset_Handler comes from startup_stm32f411
    end Linker;
 

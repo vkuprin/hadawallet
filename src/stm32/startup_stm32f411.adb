@@ -31,8 +31,12 @@ is
    procedure Adainit
      with Import => True, Convention => C, External_Name => "adainit";
 
+   --  GNAT mangles library-level subprograms as `_ada_<name>` for the
+   --  external symbol — this matches what the binder + b__main_stm32.adb
+   --  produces when `for Main use ("main_stm32.adb")`.
    procedure Main_Stm32
-     with Import => True, Convention => Ada, External_Name => "main_stm32";
+     with Import => True, Convention => Ada,
+          External_Name => "_ada_main_stm32";
 
    procedure Reset_Handler;
    pragma Export (C, Reset_Handler, "Reset_Handler");
