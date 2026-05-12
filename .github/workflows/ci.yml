@@ -128,16 +128,34 @@ jobs:
           alr -n toolchain --select gprbuild
           alr -n toolchain --select gnat_arm_elf=15.2.1 || \
             alr -n toolchain --select gnat_arm_elf
+
+          # Locate the cross-compiler bin dir. Alire installs toolchain
+          # crates under either ~/.local/share/alire or ~/.cache/alire
+          # depending on version. Find arm-eabi-gcc and add its dir to
+          # the GITHUB_PATH so subsequent steps can call it directly
+          # without going through `alr exec` (which loads the host
+          # crate's gnat_native dep instead of the cross toolchain).
+          ARM_BIN=$(find ~/.local/share/alire ~/.cache/alire ~/.alire \
+                       -name 'arm-eabi-gcc' -type f 2>/dev/null \
+                    | head -1 | xargs -r dirname)
+          if [ -z "$ARM_BIN" ]; then
+            echo "::error::arm-eabi-gcc not found after toolchain install"
+            find ~ -name 'arm-eabi-gcc*' 2>/dev/null | head -20
+            exit 1
+          fi
+          echo "Cross toolchain bin: $ARM_BIN"
+          ls "$ARM_BIN" | head -10
+          echo "$ARM_BIN" >> "$GITHUB_PATH"
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
 
       - name: Cross-build STM32F411 firmware
-        # `alr build` only knows about hadawallet.gpr (in alire.toml's
-        # project_files); for the cross GPR we drive gprbuild directly
-        # under `alr exec`, which sets PATH so arm-eabi-* binaries are
-        # reachable from the gnat_arm_elf toolchain crate.
+        # gprbuild orchestrates: it sees the GPR's `for Target use
+        # "arm-eabi"` and dispatches to arm-eabi-gcc which we just
+        # added to PATH. NOT under `alr exec` — that would re-introduce
+        # the gnat_native conflict.
         run: |
-          alr -n exec -- arm-eabi-gcc --version | head -1
-          alr -n exec -- gprbuild -P hadawallet_stm32.gpr -p
+          arm-eabi-gcc --version | head -1
+          gprbuild -P hadawallet_stm32.gpr -p
 
       - name: Report firmware size
-        run: alr -n exec -- arm-eabi-size bin/hadawallet_stm32.elf || true
+        run: arm-eabi-size bin/hadawallet_stm32.elf || true
