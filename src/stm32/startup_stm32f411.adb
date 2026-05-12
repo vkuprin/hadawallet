@@ -16,17 +16,15 @@
 
 pragma Style_Checks ("-s");
 
-with System;
-with System.Storage_Elements;
-
 package body Startup_Stm32f411
   with SPARK_Mode => Off
 is
 
-   --  Symbols defined by the linker script (stm32f411.ld).
-   _Stack_Top : constant System.Address;
-   pragma Import (C, _Stack_Top, "_estack");
-
+   --  The initial stack pointer (_estack) is placed in slot 0 of the
+   --  ISR vector table by the linker script; the Cortex-M4 boot ROM
+   --  loads SP from there before jumping to Reset_Handler. We never
+   --  read it from Ada.
+   --
    --  Forward decls for Ada elaboration + main.
    procedure Adainit
      with Import => True, Convention => C, External_Name => "adainit";
