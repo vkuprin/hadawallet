@@ -2,6 +2,8 @@
 
 pragma Style_Checks ("-s");
 
+with Interfaces;
+
 package body Secp256k1.Scalar
   with SPARK_Mode => Off
 is
@@ -154,19 +156,140 @@ is
       end if;
    end Sub;
 
-   procedure Mul (A, B : in Scalar_Element; R : out Scalar_Element) is
-      pragma Unreferenced (A, B);
+   ---------------------------------------------------------------------
+   --  Mul: schoolbook 256×256 → 512, then bit-by-bit reduction mod n.
+   --
+   --  n doesn't have the nice special-form reduction that p does, so
+   --  we use the simplest correct approach: long division. ~512
+   --  iterations of (shift Acc left by 1, conditionally subtract n).
+   --  Acc is 9 limbs (288 bits) since after a shift it can briefly
+   --  exceed 2^256 by one bit. Slow but correct; D3 will switch to
+   --  Barrett or Montgomery reduction.
+   ---------------------------------------------------------------------
+
+   type Limbs_9 is array (0 .. 8) of Hadawallet.U32;
+
+   --  n extended to 9 limbs (high limb = 0).
+   N_Ext : constant Limbs_9 :=
+     [N (0), N (1), N (2), N (3), N (4), N (5), N (6), N (7), 0];
+
+   --  Compare two 9-limb numbers. Returns -1/0/+1.
+   function Compare_9 (A, B : Limbs_9) return Integer;
+   function Compare_9 (A, B : Limbs_9) return Integer is
    begin
-      R := Zero;   --  TODO Phase D
+      for I in reverse 0 .. 8 loop
+         if A (I) < B (I) then
+            return -1;
+         elsif A (I) > B (I) then
+            return 1;
+         end if;
+      end loop;
+      return 0;
+   end Compare_9;
+
+   --  Subtract: R := A - B (assumes A >= B). Borrow ignored.
+   procedure Subtract_9 (A, B : Limbs_9; R : out Limbs_9);
+   procedure Subtract_9 (A, B : Limbs_9; R : out Limbs_9) is
+      Diff : Hadawallet.U64;
+      Bor  : Hadawallet.U64 := 0;
+   begin
+      for I in 0 .. 8 loop
+         Diff :=
+           (Hadawallet.U64 (A (I)) + 2**32)
+           - Hadawallet.U64 (B (I)) - Bor;
+         R (I) := Hadawallet.U32 (Diff and 16#FFFFFFFF#);
+         Bor := (if Diff < 2**32 then 1 else 0);
+      end loop;
+   end Subtract_9;
+
+   procedure Mul (A, B : in Scalar_Element; R : out Scalar_Element) is
+      use type Interfaces.Unsigned_128;
+
+      Wide : array (0 .. 15) of Hadawallet.U32 := [others => 0];
+      Acc_W : Interfaces.Unsigned_128 := 0;
+
+      Acc   : Limbs_9 := [others => 0];
+      Tmp   : Limbs_9;
+      Carry : Hadawallet.U64;
+      Bit   : Hadawallet.U32;
+      Big   : Hadawallet.U64;
+   begin
+      --  Schoolbook 8×8 → 16.
+      for K in 0 .. 14 loop
+         declare
+            I_Min : constant Integer := Integer'Max (0, K - 7);
+            I_Max : constant Integer := Integer'Min (7, K);
+         begin
+            for I in I_Min .. I_Max loop
+               Acc_W := Acc_W
+                      + Interfaces.Unsigned_128 (A.Limbs (I))
+                      * Interfaces.Unsigned_128 (B.Limbs (K - I));
+            end loop;
+         end;
+         Wide (K) := Hadawallet.U32 (Acc_W and 16#FFFFFFFF#);
+         Acc_W := Acc_W / 2**32;
+      end loop;
+      Wide (15) := Hadawallet.U32 (Acc_W and 16#FFFFFFFF#);
+
+      --  Long-division bit-by-bit.
+      for I in reverse 0 .. 15 loop
+         for B_Idx in reverse 0 .. 31 loop
+            Bit := (Wide (I) / Hadawallet.U32 (2**B_Idx)) and 1;
+            --  Shift Acc left by 1 bit, bringing in Bit at position 0.
+            Carry := Hadawallet.U64 (Bit);
+            for J in 0 .. 8 loop
+               Big := Hadawallet.U64 (Acc (J)) * 2 + Carry;
+               Acc (J) := Hadawallet.U32 (Big and 16#FFFFFFFF#);
+               Carry := Big / 2**32;
+            end loop;
+            --  Maybe subtract n. Loop because shift can push us up to ~2*n.
+            while Compare_9 (Acc, N_Ext) >= 0 loop
+               Subtract_9 (Acc, N_Ext, Tmp);
+               Acc := Tmp;
+            end loop;
+         end loop;
+      end loop;
+
+      for I in 0 .. 7 loop
+         R.Limbs (I) := Acc (I);
+      end loop;
    end Mul;
+
+   ---------------------------------------------------------------------
+   --  Inv via Fermat: a^(n-2) mod n, square-and-multiply. NOT
+   --  constant-time (D3 work).
+   ---------------------------------------------------------------------
 
    procedure Inv
      (A : in Scalar_Element; R : out Scalar_Element; Ok : out Boolean)
    is
-      pragma Unreferenced (A);
+      --  n - 2 in 8 × U32 little-endian limbs.
+      N_Minus_2 : constant Limbs_8 :=
+        [16#D036413F#, 16#BFD25E8C#, 16#AF48A03B#, 16#BAAEDCE6#,
+         16#FFFFFFFE#, 16#FFFFFFFF#, 16#FFFFFFFF#, 16#FFFFFFFF#];
+      T   : Scalar_Element := One;
+      Acc : Scalar_Element := A;
+      Tmp : Scalar_Element;
    begin
-      R := Zero;
-      Ok := False;   --  TODO Phase D
+      if Compare (A, Zero) = 0 then
+         R := Zero;
+         Ok := False;
+         return;
+      end if;
+
+      for I in 0 .. 7 loop
+         for B in 0 .. 31 loop
+            if (N_Minus_2 (I) and Hadawallet.U32 (2**B)) /= 0 then
+               Mul (T, Acc, Tmp);
+               T := Tmp;
+            end if;
+            Mul (Acc, Acc, Tmp);
+            Acc := Tmp;
+         end loop;
+      end loop;
+
+      R := T;
+      Ok := True;
    end Inv;
 
 end Secp256k1.Scalar;

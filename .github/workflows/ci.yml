@@ -25,9 +25,13 @@ jobs:
           restore-keys: |
             alire-${{ runner.os }}-
 
-      - name: Install gnatprove + gnatformat
+      - name: Install GNAT native toolchain + gnatprove + gnatformat
         run: |
           alr index --update-all
+          # Pick the native GNAT compiler. Without an explicit selection
+          # `alr build` later fails with "no compiler for language Ada"
+          # whenever the runner cache misses.
+          alr -n toolchain --select gnat_native gprbuild
           alr -n install gnatprove
           alr -n install gnatformat
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"

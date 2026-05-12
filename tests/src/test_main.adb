@@ -582,6 +582,53 @@ procedure Test_Main is
       Secp256k1.Scalar.Sub (S, T, U);
       Secp256k1.Scalar.To_Be32 (U, Roundtrip);
       Check ("Scalar 0 - 1 = n - 1", Roundtrip = N_Minus_1);
+
+      ---------------------------------------------------------------
+      --  Mul and Inv (mod n)
+      ---------------------------------------------------------------
+
+      --  2 * 3 = 6
+      Secp256k1.Scalar.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+          ("0000000000000000000000000000000000000000000000000000000000000002")),
+         S, Ok);
+      Secp256k1.Scalar.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+          ("0000000000000000000000000000000000000000000000000000000000000003")),
+         T, Ok);
+      Secp256k1.Scalar.Mul (S, T, U);
+      Secp256k1.Scalar.To_Be32 (U, Roundtrip);
+      Check ("Scalar 2 * 3 = 6",
+             Roundtrip = Hadawallet.Byte_Array
+               (From_Hex
+                  ("0000000000000000000000000000000000000000000000000000000000000006")));
+
+      --  (n-1) * (n-1) = 1 mod n  (since n-1 ≡ -1)
+      Secp256k1.Scalar.From_Be32 (N_Minus_1, S, Ok);
+      Secp256k1.Scalar.Mul (S, S, U);
+      Secp256k1.Scalar.To_Be32 (U, Roundtrip);
+      Check ("Scalar (n-1) * (n-1) = 1", Roundtrip = One_B);
+
+      --  Inv(1) = 1
+      Secp256k1.Scalar.From_Be32 (One_B, S, Ok);
+      Secp256k1.Scalar.Inv (S, U, Ok);
+      Secp256k1.Scalar.To_Be32 (U, Roundtrip);
+      Check ("Scalar Inv(1) = 1", Ok and then Roundtrip = One_B);
+
+      --  Verify 7 * Inv(7) = 1.
+      Secp256k1.Scalar.From_Be32
+        (Hadawallet.Byte_Array (From_Hex
+          ("0000000000000000000000000000000000000000000000000000000000000007")),
+         S, Ok);
+      Secp256k1.Scalar.Inv (S, T, Ok);
+      Check ("Scalar Inv(7) succeeds", Ok);
+      Secp256k1.Scalar.Mul (S, T, U);
+      Secp256k1.Scalar.To_Be32 (U, Roundtrip);
+      Check ("Scalar 7 * Inv(7) = 1", Roundtrip = One_B);
+
+      Secp256k1.Scalar.From_Be32 (Zero_B, S, Ok);
+      Secp256k1.Scalar.Inv (S, U, Ok);
+      Check ("Scalar Inv(0) rejected", not Ok);
    end Test_Scalar;
 
    ---------------------------------------------------------------------------
