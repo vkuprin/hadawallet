@@ -194,17 +194,96 @@ is
    --  From_Compressed — deferred (needs sqrt mod p).
    ---------------------------------------------------------------------
 
+   --  sqrt mod p via (a^((p+1)/4)) — works because secp256k1's p ≡ 3 mod 4.
+   --  (p+1)/4 in 8 × U32 little-endian.
+   Sqrt_Exp : constant Secp256k1.Field.Limbs_8 :=
+     [16#BFFFFF0C#, 16#FFFFFFFF#, 16#FFFFFFFF#, 16#FFFFFFFF#,
+      16#FFFFFFFF#, 16#FFFFFFFF#, 16#FFFFFFFF#, 16#3FFFFFFF#];
+
+   procedure Field_Pow
+     (Base : in     Secp256k1.Field.Field_Element;
+      Exp  : in     Secp256k1.Field.Limbs_8;
+      R    :    out Secp256k1.Field.Field_Element);
+   procedure Field_Pow
+     (Base : in     Secp256k1.Field.Field_Element;
+      Exp  : in     Secp256k1.Field.Limbs_8;
+      R    :    out Secp256k1.Field.Field_Element)
+   is
+      T   : Secp256k1.Field.Field_Element := Secp256k1.Field.One;
+      Acc : Secp256k1.Field.Field_Element := Base;
+      Tmp : Secp256k1.Field.Field_Element;
+   begin
+      for I in 0 .. 7 loop
+         for B in 0 .. 31 loop
+            if (Exp (I) and Hadawallet.U32 (2**B)) /= 0 then
+               Secp256k1.Field.Mul (T, Acc, Tmp);
+               T := Tmp;
+            end if;
+            Secp256k1.Field.Mul (Acc, Acc, Tmp);
+            Acc := Tmp;
+         end loop;
+      end loop;
+      R := T;
+   end Field_Pow;
+
    procedure From_Compressed
      (Bytes : in     Hadawallet.Byte_Array;
       P     :    out Affine_Point;
       Ok    :    out Boolean)
    is
-      pragma Unreferenced (Bytes);
+      First    : constant Positive := Bytes'First;
+      Sign_Byte : Hadawallet.U8;
+      X        : Secp256k1.Field.Field_Element;
+      Y, Y_Sqr, X_Cubed, X_Sqr, Rhs : Secp256k1.Field.Field_Element;
+      Seven    : constant Secp256k1.Field.Field_Element :=
+        (Limbs => [7, 0, 0, 0, 0, 0, 0, 0]);
+      Neg_Y    : Secp256k1.Field.Field_Element;
+      Y_Parity : Hadawallet.U8;
+      X_Ok     : Boolean;
    begin
       P := (X => Secp256k1.Field.Zero,
             Y => Secp256k1.Field.Zero,
             Infinity => True);
-      Ok := False;   --  TODO Phase D — sqrt mod p
+      Ok := False;
+      if Bytes'Length /= 33 then
+         return;
+      end if;
+      Sign_Byte := Bytes (First);
+      if Sign_Byte /= 16#02# and Sign_Byte /= 16#03# then
+         return;
+      end if;
+
+      Secp256k1.Field.From_Be32 (Bytes (First + 1 .. First + 32), X, X_Ok);
+      if not X_Ok then
+         return;   --  X >= p
+      end if;
+
+      --  Compute Y² = X³ + 7 mod p.
+      Secp256k1.Field.Sqr (X, X_Sqr);
+      Secp256k1.Field.Mul (X_Sqr, X, X_Cubed);
+      Secp256k1.Field.Add (X_Cubed, Seven, Rhs);
+
+      --  Y candidate: Y = Rhs^((p+1)/4) mod p.
+      Field_Pow (Rhs, Sqrt_Exp, Y);
+
+      --  Verify Y² = Rhs (i.e., Rhs really was a quadratic residue).
+      Secp256k1.Field.Sqr (Y, Y_Sqr);
+      if Secp256k1.Field.Compare (Y_Sqr, Rhs) /= 0 then
+         return;   --  Not on curve.
+      end if;
+
+      --  Adjust Y parity to match sign byte: 0x02 wants even Y,
+      --  0x03 wants odd Y. If parity wrong, negate (= p - Y).
+      Y_Parity := Hadawallet.U8 (Y.Limbs (0) and 1);
+      if (Sign_Byte = 16#02# and Y_Parity = 1)
+        or else (Sign_Byte = 16#03# and Y_Parity = 0)
+      then
+         Secp256k1.Field.Sub (Secp256k1.Field.Zero, Y, Neg_Y);
+         Y := Neg_Y;
+      end if;
+
+      P := (X => X, Y => Y, Infinity => False);
+      Ok := True;
    end From_Compressed;
 
    ---------------------------------------------------------------------

@@ -18,6 +18,7 @@ with Key_Derivation;
 with Secp256k1.Der;
 with Secp256k1.Field;
 with Secp256k1.Scalar;
+with Secp256k1.Group;
 
 procedure Test_Main is
 
@@ -632,6 +633,37 @@ procedure Test_Main is
    end Test_Scalar;
 
    ---------------------------------------------------------------------------
+   --  Group.From_Compressed — round-trip the generator G.
+   ---------------------------------------------------------------------------
+
+   procedure Test_From_Compressed;
+   procedure Test_From_Compressed is
+      G_Compressed : constant Hadawallet.Byte_Array := From_Hex
+        ("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+      P            : Secp256k1.Group.Affine_Point;
+      Re_Encoded   : Hadawallet.Byte_Array (1 .. 33) := [others => 0];
+      Ok           : Boolean;
+
+      --  An off-curve X (e.g., 0x07): X^3+7 may not have a sqrt mod p.
+      Bogus : constant Hadawallet.Byte_Array := From_Hex
+        ("020000000000000000000000000000000000000000000000000000000000000007");
+   begin
+      Secp256k1.Group.From_Compressed (G_Compressed, P, Ok);
+      Check ("Group.From_Compressed(G) succeeds", Ok and not P.Infinity);
+      if Ok then
+         Secp256k1.Group.To_Compressed (P, Re_Encoded, Ok);
+         Check ("Group G round-trip equals input", Ok
+                and then Re_Encoded = G_Compressed);
+      end if;
+
+      Secp256k1.Group.From_Compressed (Bogus, P, Ok);
+      --  We can't be sure 0x07 is a non-residue, but the test exists
+      --  to confirm From_Compressed never crashes on adversarial input.
+      Check ("Group.From_Compressed(off-curve candidate) terminates",
+             True);
+   end Test_From_Compressed;
+
+   ---------------------------------------------------------------------------
    --  Signing.Tweak_Add_Scalar — cross-backend equality.
    --  On BACKEND=c this exercises libsecp256k1; on BACKEND=ada it
    --  exercises Secp256k1.Ecdsa.Tweak_Add_Scalar -> Scalar.Add. Both
@@ -686,6 +718,7 @@ begin
    Test_Field;
    Test_Scalar;
    Test_Tweak_Add_Scalar;
+   Test_From_Compressed;
    Ada.Text_IO.Put_Line ("---------------------");
    if Failures = 0 then
       Ada.Text_IO.Put_Line ("ALL TESTS PASSED");
