@@ -60,8 +60,12 @@ is
    end Default_Handler;
 
    --  ISR vector table — must live in the .isr_vector section, which
-   --  the linker script places at the very start of flash.
-   type Isr_Entry is access procedure;
+   --  the linker script places at the very start of flash. The access
+   --  type carries Convention => C so the table entries match the
+   --  Reset_Handler / Default_Handler subprograms exported with C
+   --  convention above.
+   type Isr_Entry is access procedure
+     with Convention => C;
    type Isr_Vector_Table is array (Natural range <>) of Isr_Entry;
 
    --  Only the first 16 system-exception slots are populated; all
