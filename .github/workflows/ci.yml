@@ -129,23 +129,27 @@ jobs:
           alr -n toolchain --select gnat_arm_elf=15.2.1 || \
             alr -n toolchain --select gnat_arm_elf
 
-          # Locate the cross-compiler bin dir. Alire installs toolchain
-          # crates under either ~/.local/share/alire or ~/.cache/alire
-          # depending on version. Find arm-eabi-gcc and add its dir to
-          # the GITHUB_PATH so subsequent steps can call it directly
-          # without going through `alr exec` (which loads the host
-          # crate's gnat_native dep instead of the cross toolchain).
-          ARM_BIN=$(find ~/.local/share/alire ~/.cache/alire ~/.alire \
-                       -name 'arm-eabi-gcc' -type f 2>/dev/null \
+          # Locate both arm-eabi-gcc (from gnat_arm_elf) and gprbuild
+          # (from the gprbuild crate). Alire installs toolchain crates
+          # under either ~/.local/share/alire, ~/.cache/alire, or
+          # ~/.alire depending on version. We add their bin dirs to
+          # GITHUB_PATH so subsequent steps can call them directly
+          # without `alr exec` (which would load hadawallet's
+          # gnat_native dep instead of the cross toolchain).
+          SEARCH_ROOTS="$HOME/.local/share/alire $HOME/.cache/alire $HOME/.alire"
+          ARM_BIN=$(find $SEARCH_ROOTS -name 'arm-eabi-gcc' -type f 2>/dev/null \
                     | head -1 | xargs -r dirname)
-          if [ -z "$ARM_BIN" ]; then
-            echo "::error::arm-eabi-gcc not found after toolchain install"
-            find ~ -name 'arm-eabi-gcc*' 2>/dev/null | head -20
+          GPR_BIN=$(find $SEARCH_ROOTS -name 'gprbuild' -type f 2>/dev/null \
+                    | grep -v arm-eabi | head -1 | xargs -r dirname)
+          if [ -z "$ARM_BIN" ] || [ -z "$GPR_BIN" ]; then
+            echo "::error::missing toolchain binaries (arm-eabi-gcc=$ARM_BIN, gprbuild=$GPR_BIN)"
+            find ~ \( -name 'arm-eabi-gcc*' -o -name 'gprbuild' \) 2>/dev/null | head -30
             exit 1
           fi
           echo "Cross toolchain bin: $ARM_BIN"
-          ls "$ARM_BIN" | head -10
+          echo "gprbuild bin: $GPR_BIN"
           echo "$ARM_BIN" >> "$GITHUB_PATH"
+          echo "$GPR_BIN" >> "$GITHUB_PATH"
           echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
 
       - name: Cross-build STM32F411 firmware
