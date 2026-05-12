@@ -16,6 +16,8 @@
 
 pragma Style_Checks ("-s");
 
+with System;
+
 package body Startup_Stm32f411
   with SPARK_Mode => Off
 is
@@ -60,21 +62,22 @@ is
    end Default_Handler;
 
    --  ISR vector table — must live in the .isr_vector section, which
-   --  the linker script places at the very start of flash. The access
-   --  type carries Convention => C so the table entries match the
-   --  Reset_Handler / Default_Handler subprograms exported with C
-   --  convention above.
-   type Isr_Entry is access procedure
+   --  the linker script places at the very start of flash. We use
+   --  System.Address here instead of `access procedure` because the
+   --  GCC 14.2.0 arm-eabi front-end ICEs on the access-type aggregate
+   --  variant ("Bug Box: process_freeze_entity"). Function pointers
+   --  and System.Address are interchangeable at link time on this
+   --  ABI, and the boot ROM treats every slot as just a 32-bit word.
+   type Isr_Vector_Table is array (Natural range <>) of System.Address
      with Convention => C;
-   type Isr_Vector_Table is array (Natural range <>) of Isr_Entry;
 
    --  Only the first 16 system-exception slots are populated; all
    --  device IRQs default-handle. Reset handler at slot 1 gets jumped
    --  to by the Cortex-M4 boot ROM after loading SP from slot 0.
    Vector_Table : constant Isr_Vector_Table (0 .. 15) :=
-     [0 => null,    --  Initial SP — patched by linker (see ld script).
-      1 => Reset_Handler'Access,
-      others => Default_Handler'Access]
+     [0 => System.Null_Address,   --  Initial SP — patched by linker.
+      1 => Reset_Handler'Address,
+      others => Default_Handler'Address]
      with Linker_Section => ".isr_vector",
           Export, Convention => C,
           External_Name => "g_pfnVectors";
