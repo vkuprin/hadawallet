@@ -29,3 +29,6 @@ docs/
 # Claude Code session state
 .claude/scheduled_tasks.lock
 .claude/projects/
+obj-stm32/
+bin/hadawallet_stm32*
+*.map

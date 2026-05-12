@@ -1,8 +1,0 @@
-main_stm32.adb:35:14: warning: pragma Restrictions (No_Exception_Propagation) in effect [-gnatw.x]
-main_stm32.adb:35:14: warning: "Constraint_Error" may call Last_Chance_Handler [-gnatw.x]
-main_stm32.adb:35:36: warning: pragma Restrictions (No_Exception_Propagation) in effect [-gnatw.x]
-main_stm32.adb:35:36: warning: "Constraint_Error" may call Last_Chance_Handler [-gnatw.x]
-main_stm32.adb:43:45: warning: pragma Restrictions (No_Exception_Propagation) in effect [-gnatw.x]
-main_stm32.adb:43:45: warning: "Constraint_Error" may call Last_Chance_Handler [-gnatw.x]
-main_stm32.adb:45:45: warning: pragma Restrictions (No_Exception_Propagation) in effect [-gnatw.x]
-main_stm32.adb:45:45: warning: "Constraint_Error" may call Last_Chance_Handler [-gnatw.x]
