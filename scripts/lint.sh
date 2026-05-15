@@ -11,13 +11,23 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 
-export PATH="$HOME/.alire/bin:$PATH"
+export PATH="$PATH:$HOME/.alire/bin"
+
+if command -v alr >/dev/null 2>&1; then
+  for tool in gnat gprbuild; do
+    tool_path="$(alr -n exec -- which "$tool" 2>/dev/null || true)"
+    if [ -n "$tool_path" ]; then
+      PATH="$(dirname "$tool_path"):$PATH"
+    fi
+  done
+  export PATH
+fi
 
 fail=0
 
 echo "==> gnatformat --check"
 if command -v gnatformat >/dev/null 2>&1; then
-  if ! alr -n exec -- gnatformat -P hadawallet.gpr --charset utf-8 --check; then
+  if ! gnatformat -P hadawallet.gpr --charset utf-8 --check; then
     echo "FAIL: formatting drift. Apply with: ./scripts/fmt.sh" >&2
     fail=1
   fi
@@ -27,7 +37,7 @@ else
 fi
 
 echo "==> gprbuild -gnatyy -gnatwa -gnatwe (style + warnings-as-errors)"
-if ! alr -n exec -- gprbuild -P hadawallet.gpr -p -q \
+if ! gprbuild -P hadawallet.gpr -p -q \
        -cargs:Ada -gnatyy -gnatwa -gnatwe; then
   echo "FAIL: style or warning issues" >&2
   fail=1
