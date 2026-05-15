@@ -108,8 +108,7 @@ is
          Has_Digit := False;
          while I <= S'Last and then S (I) in '0' .. '9' loop
             E :=
-              E
-              * 10
+              E * 10
               + Hadawallet.Path_Element
                   (Character'Pos (S (I)) - Character'Pos ('0'));
             Has_Digit := True;

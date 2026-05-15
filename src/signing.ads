@@ -43,7 +43,7 @@ is
       Signature : out Hadawallet.Signature_Bytes;
       Length    : out Hadawallet.Signature_Length)
    with
-     Global  => (Input => Key_State),
+     Global => (Input => Key_State),
      Depends => ((Signature, Length) => (Key_State, Digest));
 
    --  Securely wipe the loaded key.

@@ -187,8 +187,7 @@ is
       State    : SHA256_State := IV256;
       Bit_Len  : constant Unsigned_64 := Unsigned_64 (Input'Length) * 8;
       Tail_Len : constant Natural :=
-        (if (Input'Length mod 64) < 56
-         then 64 - (Input'Length mod 64)
+        (if (Input'Length mod 64) < 56 then 64 - (Input'Length mod 64)
          else 128 - (Input'Length mod 64));
       Padded   : Hadawallet.Byte_Array (1 .. Input'Length + Tail_Len) :=
         [others => 0];
@@ -410,8 +409,7 @@ is
       State    : SHA512_State := IV512;
       Bit_Len  : constant Unsigned_64 := Unsigned_64 (Input'Length) * 8;
       Tail_Len : constant Natural :=
-        (if (Input'Length mod 128) < 112
-         then 128 - (Input'Length mod 128)
+        (if (Input'Length mod 128) < 112 then 128 - (Input'Length mod 128)
          else 256 - (Input'Length mod 128));
       Padded   : Hadawallet.Byte_Array (1 .. Input'Length + Tail_Len) :=
         [others => 0];
@@ -884,9 +882,7 @@ is
 
          T :=
            Rotate_Left
-             (AR
-              + RIPEMD_F (79 - J, BR, CR, DR)
-              + X (R_Right (J))
+             (AR + RIPEMD_F (79 - J, BR, CR, DR) + X (R_Right (J))
               + K_Right (J / 16),
               S_Right (J))
            + ER;
@@ -912,8 +908,7 @@ is
       State    : RIPEMD_State := IV_RIPEMD;
       Bit_Len  : constant Unsigned_64 := Unsigned_64 (Input'Length) * 8;
       Tail_Len : constant Natural :=
-        (if (Input'Length mod 64) < 56
-         then 64 - (Input'Length mod 64)
+        (if (Input'Length mod 64) < 56 then 64 - (Input'Length mod 64)
          else 128 - (Input'Length mod 64));
       Padded   : Hadawallet.Byte_Array (1 .. Input'Length + Tail_Len) :=
         [others => 0];
