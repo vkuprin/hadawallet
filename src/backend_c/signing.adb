@@ -16,7 +16,7 @@ with System;
 
 package body Signing
   with
-    SPARK_Mode => On,
+    SPARK_Mode    => On,
     Refined_State => (Key_State => (Stored_Key, Key_Is_Loaded))
 is
 
@@ -46,7 +46,7 @@ is
 
    procedure Load_Privkey (Key : in Hadawallet.Privkey_Bytes)
    with
-     Refined_Global => (Output => (Stored_Key, Key_Is_Loaded)),
+     Refined_Global  => (Output => (Stored_Key, Key_Is_Loaded)),
      Refined_Depends => (Stored_Key => Key, Key_Is_Loaded => null)
    is
    begin
@@ -63,7 +63,7 @@ is
       Signature : out Hadawallet.Signature_Bytes;
       Length    : out Hadawallet.Signature_Length)
    with
-     Refined_Global => (Input => (Stored_Key, Key_Is_Loaded)),
+     Refined_Global  => (Input => (Stored_Key, Key_Is_Loaded)),
      Refined_Depends =>
        ((Signature, Length) => (Stored_Key, Key_Is_Loaded, Digest))
    is
@@ -78,7 +78,7 @@ is
 
    procedure Wipe
    with
-     Refined_Global => (Output => (Stored_Key, Key_Is_Loaded)),
+     Refined_Global  => (Output => (Stored_Key, Key_Is_Loaded)),
      Refined_Depends => ((Stored_Key, Key_Is_Loaded) => null)
    is
    begin
@@ -120,14 +120,14 @@ is
 
       function Context_Create (Flags : unsigned) return System.Address
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_context_create";
 
       procedure Context_Destroy (Ctx : System.Address)
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_context_destroy";
 
       function Ecdsa_Sign
@@ -138,8 +138,8 @@ is
          Nonce_Fn : System.Address;
          Ndata    : System.Address) return int
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_ecdsa_sign";
 
       function Ecdsa_Sig_Serialize_Der
@@ -148,8 +148,8 @@ is
          Output_Len : access size_t;
          Sig        : System.Address) return int
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_ecdsa_signature_serialize_der";
 
       Ctx          : System.Address;
@@ -202,22 +202,22 @@ is
 
       function Context_Create (Flags : unsigned) return System.Address
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_context_create";
 
       procedure Context_Destroy (Ctx : System.Address)
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_context_destroy";
 
       function Ec_Seckey_Tweak_Add
         (Ctx : System.Address; Seckey : System.Address; Tweak : System.Address)
          return int
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_ec_seckey_tweak_add";
 
       Ctx : System.Address;
@@ -248,14 +248,14 @@ is
 
       function Context_Create (Flags : unsigned) return System.Address
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_context_create";
 
       procedure Context_Destroy (Ctx : System.Address)
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_context_destroy";
 
       function Ec_Pubkey_Create
@@ -263,8 +263,8 @@ is
          Pubkey : System.Address;
          Seckey : System.Address) return int
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_ec_pubkey_create";
 
       function Ec_Pubkey_Serialize
@@ -274,8 +274,8 @@ is
          Pubkey     : System.Address;
          Flags      : unsigned) return int
       with
-        Import => True,
-        Convention => C,
+        Import        => True,
+        Convention    => C,
         External_Name => "secp256k1_ec_pubkey_serialize";
 
       Ctx          : System.Address;

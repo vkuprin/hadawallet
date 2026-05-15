@@ -8,9 +8,9 @@ package Hadawallet
 is
 
    --  Unsigned word types.
-   type U8 is mod 2 ** 8 with Size => 8;
-   type U32 is mod 2 ** 32 with Size => 32;
-   type U64 is mod 2 ** 64 with Size => 64;
+   type U8 is mod 2**8 with Size => 8;
+   type U32 is mod 2**32 with Size => 32;
+   type U64 is mod 2**64 with Size => 64;
 
    --  Generic byte buffer.
    type Byte_Array is array (Positive range <>) of U8;

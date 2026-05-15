@@ -33,7 +33,7 @@ jobs:
           # whenever the runner cache misses.
           alr -n toolchain --select gnat_native gprbuild
           alr -n install gnatprove
-          alr -n install gnatformat=25.0.0
+          alr -n install gnatformat_bin=26.0.0
           GPRBUILD_BIN=$(dirname "$(alr -n exec -- which gprbuild)")
           GNAT_BIN=$(dirname "$(alr -n exec -- which gcc)")
           {

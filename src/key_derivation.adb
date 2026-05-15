@@ -38,9 +38,9 @@ is
       Pos : in Positive;
       V   : in Hadawallet.U32) is
    begin
-      Buf (Pos) := Hadawallet.U8 ((V / 2 ** 24) and 16#FF#);
-      Buf (Pos + 1) := Hadawallet.U8 ((V / 2 ** 16) and 16#FF#);
-      Buf (Pos + 2) := Hadawallet.U8 ((V / 2 ** 8) and 16#FF#);
+      Buf (Pos) := Hadawallet.U8 ((V / 2**24) and 16#FF#);
+      Buf (Pos + 1) := Hadawallet.U8 ((V / 2**16) and 16#FF#);
+      Buf (Pos + 2) := Hadawallet.U8 ((V / 2**8) and 16#FF#);
       Buf (Pos + 3) := Hadawallet.U8 (V and 16#FF#);
    end Put_BE32;
 

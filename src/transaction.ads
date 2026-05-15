@@ -15,11 +15,11 @@ package Transaction
   with SPARK_Mode => On
 is
 
-   Max_Inputs : constant := 16;
-   Max_Outputs : constant := 16;
+   Max_Inputs       : constant := 16;
+   Max_Outputs      : constant := 16;
    Max_Script_Bytes : constant := 64;   --  P2WPKH scriptPubKey is 22 bytes.
-   Max_Tx_Bytes : constant := 4096; --  bound the raw unsigned tx blob.
-   Max_Psbt_Bytes : constant := 8192; --  bound the whole PSBT blob.
+   Max_Tx_Bytes     : constant := 4096; --  bound the raw unsigned tx blob.
+   Max_Psbt_Bytes   : constant := 8192; --  bound the whole PSBT blob.
 
    subtype Input_Index is Natural range 1 .. Max_Inputs;
    subtype Output_Index is Natural range 1 .. Max_Outputs;

@@ -86,7 +86,7 @@ is
          return;
       end if;
       for I in 0 .. 7 loop
-         V := V or Hadawallet.U64 (B (C.Pos + I)) * (2 ** (8 * I));
+         V := V or Hadawallet.U64 (B (C.Pos + I)) * (2**(8 * I));
       end loop;
       C.Pos := C.Pos + 8;
    end Take_LE64;
@@ -105,7 +105,7 @@ is
          when 0 .. 16#FC# =>
             V := Hadawallet.U64 (Tag);
 
-         when 16#FD# =>
+         when 16#FD#      =>
             if Remaining (C) < 2 then
                C.Bad := True;
                return;
@@ -115,7 +115,7 @@ is
               or Hadawallet.U64 (B (C.Pos + 1)) * 16#100#;
             C.Pos := C.Pos + 2;
 
-         when 16#FE# =>
+         when 16#FE#      =>
             declare
                V32 : Hadawallet.U32;
             begin
@@ -123,7 +123,7 @@ is
                V := Hadawallet.U64 (V32);
             end;
 
-         when 16#FF# =>
+         when 16#FF#      =>
             Take_LE64 (B, C, V);
       end case;
    end Take_Varint;
@@ -149,14 +149,14 @@ is
          Out_Buf (Idx) := 16#FE#;
          for I in 0 .. 3 loop
             Out_Buf (Idx + 1 + I) :=
-              Hadawallet.U8 ((V / (2 ** (8 * I))) mod 16#100#);
+              Hadawallet.U8 ((V / (2**(8 * I))) mod 16#100#);
          end loop;
          Idx := Idx + 5;
       else
          Out_Buf (Idx) := 16#FF#;
          for I in 0 .. 7 loop
             Out_Buf (Idx + 1 + I) :=
-              Hadawallet.U8 ((V / (2 ** (8 * I))) mod 16#100#);
+              Hadawallet.U8 ((V / (2**(8 * I))) mod 16#100#);
          end loop;
          Idx := Idx + 9;
       end if;
@@ -168,7 +168,7 @@ is
       V       : Hadawallet.U32) is
    begin
       for I in 0 .. 3 loop
-         Out_Buf (Idx + I) := Hadawallet.U8 ((V / (2 ** (8 * I))) mod 16#100#);
+         Out_Buf (Idx + I) := Hadawallet.U8 ((V / (2**(8 * I))) mod 16#100#);
       end loop;
       Idx := Idx + 4;
    end Put_LE32;
@@ -179,7 +179,7 @@ is
       V       : Hadawallet.U64) is
    begin
       for I in 0 .. 7 loop
-         Out_Buf (Idx + I) := Hadawallet.U8 ((V / (2 ** (8 * I))) mod 16#100#);
+         Out_Buf (Idx + I) := Hadawallet.U8 ((V / (2**(8 * I))) mod 16#100#);
       end loop;
       Idx := Idx + 8;
    end Put_LE64;
