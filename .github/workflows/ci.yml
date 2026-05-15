@@ -33,8 +33,14 @@ jobs:
           # whenever the runner cache misses.
           alr -n toolchain --select gnat_native gprbuild
           alr -n install gnatprove
-          alr -n install gnatformat
-          echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
+          alr -n install gnatformat=26.0.0
+          GPRBUILD_BIN=$(dirname "$(alr -n exec -- which gprbuild)")
+          GNAT_BIN=$(dirname "$(alr -n exec -- which gcc)")
+          {
+            echo "$GPRBUILD_BIN"
+            echo "$GNAT_BIN"
+            echo "$HOME/.alire/bin"
+          } >> "$GITHUB_PATH"
         # gnatdoc / gnatcov live only in docs.yml — keep the ci.yml surface
         # narrow so a stale Alire index can't break the build/prove/test
         # pipeline.
@@ -151,9 +157,11 @@ jobs:
 
           echo "FSF gprbuild: $GPR_BIN"
           echo "Cross toolchain: $ARM_BIN"
-          echo "$GPR_BIN" >> "$GITHUB_PATH"
-          echo "$ARM_BIN" >> "$GITHUB_PATH"
-          echo "$HOME/.alire/bin" >> "$GITHUB_PATH"
+          {
+            echo "$GPR_BIN"
+            echo "$ARM_BIN"
+            echo "$HOME/.alire/bin"
+          } >> "$GITHUB_PATH"
 
       - name: Cross-build STM32F411 firmware
         run: |
