@@ -33,14 +33,16 @@ jobs:
           # whenever the runner cache misses.
           alr -n toolchain --select gnat_native gprbuild
           alr -n install gnatprove
+          GPRBUILD_URL="https://github.com/alire-project/GNAT-FSF-builds/releases/download/gprbuild-25.0.0-1/gprbuild-x86_64-linux-25.0.0-1.tar.gz"
+          curl -fsSL "$GPRBUILD_URL" -o /tmp/gprbuild.tgz
+          sudo tar -xzf /tmp/gprbuild.tgz -C /opt
           GNATFORMAT_URL="https://github.com/alire-project/GNAT-FSF-builds/releases/download/gnatformat-26.0-1/gnatformat-x86_64-linux-26.0-1.tar.gz"
           curl -fsSL "$GNATFORMAT_URL" -o /tmp/gnatformat.tgz
           sudo tar -xzf /tmp/gnatformat.tgz -C /opt
-          GPRBUILD_BIN=$(dirname "$(alr -n exec -- which gprbuild)")
           GNAT_BIN=$(dirname "$(alr -n exec -- which gnat)")
           {
+            echo "/opt/gprbuild-x86_64-linux-25.0.0-1/bin"
             echo "/opt/gnatformat-x86_64-linux-26.0-1/bin"
-            echo "$GPRBUILD_BIN"
             echo "$GNAT_BIN"
             echo "$HOME/.alire/bin"
           } >> "$GITHUB_PATH"

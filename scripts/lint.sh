@@ -14,12 +14,16 @@ cd "$(dirname "$0")/.." || exit 1
 export PATH="$PATH:$HOME/.alire/bin"
 
 if command -v alr >/dev/null 2>&1; then
-  for tool in gnat gprbuild; do
-    tool_path="$(alr -n exec -- which "$tool" 2>/dev/null || true)"
+  tool_path="$(alr -n exec -- which gnat 2>/dev/null || true)"
+  if [ -n "$tool_path" ]; then
+    PATH="$(dirname "$tool_path"):$PATH"
+  fi
+  if ! command -v gprbuild >/dev/null 2>&1; then
+    tool_path="$(alr -n exec -- which gprbuild 2>/dev/null || true)"
     if [ -n "$tool_path" ]; then
       PATH="$(dirname "$tool_path"):$PATH"
     fi
-  done
+  fi
   export PATH
 fi
 
