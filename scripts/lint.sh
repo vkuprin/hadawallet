@@ -13,11 +13,15 @@ cd "$(dirname "$0")/.." || exit 1
 
 export PATH="$PATH:$HOME/.alire/bin"
 
-if command -v alr >/dev/null 2>&1; then
-  tool_path="$(alr -n exec -- which gnat 2>/dev/null || true)"
+if ! command -v gnat >/dev/null 2>&1; then
+  tool_path="$(find "$HOME/.local/share/alire/toolchains" \
+    -path '*/bin/gnat' -type f -print -quit 2>/dev/null || true)"
   if [ -n "$tool_path" ]; then
     PATH="$(dirname "$tool_path"):$PATH"
   fi
+fi
+
+if command -v alr >/dev/null 2>&1; then
   if ! command -v gprbuild >/dev/null 2>&1; then
     tool_path="$(alr -n exec -- which gprbuild 2>/dev/null || true)"
     if [ -n "$tool_path" ]; then
@@ -28,6 +32,12 @@ if command -v alr >/dev/null 2>&1; then
 fi
 
 fail=0
+
+echo "==> tool paths"
+echo "gnat: $(command -v gnat || echo missing)"
+echo "gcc: $(command -v gcc || echo missing)"
+echo "gprbuild: $(command -v gprbuild || echo missing)"
+echo "gnatformat: $(command -v gnatformat || echo missing)"
 
 echo "==> gnatformat --check"
 if command -v gnatformat >/dev/null 2>&1; then
