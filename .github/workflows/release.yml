@@ -20,12 +20,11 @@ jobs:
             runner: ubuntu-latest
             archive_ext: tar.gz
           - target: macos-x86_64
-            runner: macos-13
+            runner: macos-15-intel
             archive_ext: tar.gz
-            # Native x86_64 runner. macOS arm64 hosts run this via
-            # Rosetta 2 transparently. Alire's gnat_native crate
-            # currently ships x86_64 macOS binaries only, so an
-            # arm64 build target would also be x86_64 underneath.
+            # Native x86_64 runner. Alire's gnat_native crate currently
+            # ships x86_64 macOS binaries only, so keep the release target
+            # explicit and avoid relying on Apple Silicon/Rosetta behavior.
 
     steps:
       - uses: actions/checkout@v4
