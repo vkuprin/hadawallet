@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-release-binaries:
     name: Build ${{ matrix.target }}
@@ -36,8 +39,9 @@ jobs:
         run: |
           alr index --update-all
           alr -n toolchain --select gnat_native gprbuild
+          # `-perm -111` instead of `-executable` for BSD find (macOS).
           GNAT_PATH=$(find "$HOME/.local/share/alire/toolchains" \
-            -path '*/bin/gnat' -type f -executable -print -quit)
+            -path '*/bin/gnat' -type f -perm -111 -print 2>/dev/null | head -1)
           if [ -z "$GNAT_PATH" ]; then
             echo "::error::gnat not found"
             find "$HOME/.local/share/alire/toolchains" -path '*/bin/gnat' -type f 2>/dev/null | head -5
