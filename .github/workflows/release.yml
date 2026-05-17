@@ -28,10 +28,26 @@ jobs:
 
       - name: Install GNAT native toolchain
         # Mirrors the ci.yml install pattern so the release binaries are
-        # built with the same toolchain that proves the codebase.
+        # built with the same toolchain that proves the codebase. The
+        # `alr toolchain --select` step picks the compiler but does NOT
+        # put its bin/ on PATH for subsequent jobs — gprbuild then
+        # reports `no compiler for language Ada`. Locate the gnat
+        # binary explicitly and add its directory to $GITHUB_PATH.
         run: |
           alr index --update-all
           alr -n toolchain --select gnat_native gprbuild
+          GNAT_PATH=$(find "$HOME/.local/share/alire/toolchains" \
+            -path '*/bin/gnat' -type f -executable -print -quit)
+          if [ -z "$GNAT_PATH" ]; then
+            echo "::error::gnat not found"
+            find "$HOME/.local/share/alire/toolchains" -path '*/bin/gnat' -type f 2>/dev/null | head -5
+            exit 1
+          fi
+          GNAT_BIN=$(dirname "$GNAT_PATH")
+          {
+            echo "$GNAT_BIN"
+            echo "$HOME/.alire/bin"
+          } >> "$GITHUB_PATH"
 
       - name: Install libsecp256k1 (Linux)
         if: runner.os == 'Linux'
@@ -41,8 +57,9 @@ jobs:
 
       - name: Install libsecp256k1 (macOS)
         if: runner.os == 'macOS'
+        # Homebrew's formula is `secp256k1`, not `libsecp256k1`.
         run: |
-          brew install libsecp256k1
+          brew install secp256k1
 
       - name: Build (BACKEND=c, validation profile)
         run: alr -n build --validation
