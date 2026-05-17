@@ -80,6 +80,8 @@ procedure Main is
    procedure Run_Smoke;
    procedure Emit_Fixture;
    procedure Emit_Address (Net : Hadawallet.Network);
+   procedure Print_Version;
+   procedure Print_Help (To_Stderr : Boolean);
 
    ---------------------------------------------------------------------------
    --  --smoke
@@ -186,7 +188,9 @@ procedure Main is
             & " bytes DER");
          Ada.Text_IO.Put_Line ("    " & Sig_Hex (1 .. 2 * Natural (Sig_Len)));
       else
-         Ada.Text_IO.Put_Line ("[smoke] ECDSA sign FAILED");
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error, "[smoke] ECDSA sign FAILED");
+         Ada.Command_Line.Set_Exit_Status (1);
       end if;
    end Run_Smoke;
 
@@ -272,12 +276,81 @@ procedure Main is
       Ada.Text_IO.Put_Line (Addr_Buf (1 .. Addr_Len));
    end Emit_Address;
 
+   ---------------------------------------------------------------------------
+   --  --version
+   ---------------------------------------------------------------------------
+
+   procedure Print_Version is
+   begin
+      Ada.Text_IO.Put_Line ("hadawallet " & Hadawallet.Version_String);
+   end Print_Version;
+
+   ---------------------------------------------------------------------------
+   --  --help
+   ---------------------------------------------------------------------------
+
+   procedure Print_Help (To_Stderr : Boolean) is
+      procedure P (Line : String);
+      procedure P (Line : String) is
+      begin
+         if To_Stderr then
+            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, Line);
+         else
+            Ada.Text_IO.Put_Line (Line);
+         end if;
+      end P;
+   begin
+      P
+        ("hadawallet "
+         & Hadawallet.Version_String
+         & " -- formally verified Bitcoin hardware wallet");
+      P ("");
+      P ("USAGE:");
+      P ("    hadawallet [MODE] [ARGS]");
+      P ("");
+      P ("MODES:");
+      P ("    (no args)              Sign mode: read PSBT from stdin,");
+      P ("                           write signed PSBT to stdout.");
+      P ("    --address [NET]        Print BIP84 P2WPKH address for the");
+      P ("                           active privkey. NET in");
+      P ("                           {mainnet, testnet, regtest}.");
+      P ("                           Default: mainnet.");
+      P ("    --fixture              Emit an unsigned demo PSBT to stdout.");
+      P ("    --smoke                Run module smoke tests");
+      P ("                           (FIPS/RFC/BIP vectors).");
+      P ("    --version              Print version and exit.");
+      P ("    --help, -h             Print this help and exit.");
+      P ("");
+      P ("ENVIRONMENT:");
+      P ("    HADAWALLET_MNEMONIC_FILE  Path to BIP39 mnemonic file.");
+      P ("                              Default: ~/.hadawallet/mnemonic.txt");
+      P ("    HADAWALLET_PRIVKEY_FILE   Fallback: path to 32-byte raw");
+      P ("                              privkey file.");
+      P ("                              Default: ~/.hadawallet/key.bin");
+      P ("    HADAWALLET_PATH           BIP32 derivation path.");
+      P ("                              Default: m/84'/0'/0'/0/0");
+      P ("");
+      P ("EXIT CODES:");
+      P ("    0   Success.");
+      P ("    1   Bad arguments, missing privkey, or signing failure.");
+      P ("");
+      P ("DOCS:");
+      P ("    Usage guide:  docs/usage.md");
+      P ("    Proof model:  proofs/README.md");
+   end Print_Help;
+
 begin
    if Ada.Command_Line.Argument_Count >= 1 then
       declare
          Arg : constant String := Ada.Command_Line.Argument (1);
       begin
-         if Arg = "--smoke" then
+         if Arg = "--version" then
+            Print_Version;
+            return;
+         elsif Arg = "--help" or else Arg = "-h" then
+            Print_Help (To_Stderr => False);
+            return;
+         elsif Arg = "--smoke" then
             Run_Smoke;
             return;
          elsif Arg = "--fixture" then
@@ -313,10 +386,7 @@ begin
             Ada.Text_IO.Put_Line
               (Ada.Text_IO.Standard_Error,
                "hadawallet: unknown argument """ & Arg & """");
-            Ada.Text_IO.Put_Line
-              (Ada.Text_IO.Standard_Error,
-               "usage: hadawallet"
-               & " [--smoke | --fixture | --address [<net>]]");
+            Print_Help (To_Stderr => True);
             Ada.Command_Line.Set_Exit_Status (1);
             return;
          end if;

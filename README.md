@@ -9,16 +9,48 @@ derivation lands. `gnatprove --level=4` reports **22 / 22 (100%)** checks
 proved on `Signing` — the key-isolation flow contract is verified by SPARK,
 not aspirational.
 
-```bash
-alr build
-./scripts/demo-offline.sh   # full sign-a-PSBT demo, no bitcoind required
+## Quickstart (5 minutes)
 
-# Mnemonic-derived address (BIP84 test vector):
-echo "abandon abandon abandon abandon abandon abandon \
-abandon abandon abandon abandon abandon about" > ~/.hadawallet/mnemonic.txt
+```bash
+# 1. Install Alire (https://alire.ada.dev), then build:
+alr build
+
+# 2. Try it without a key (offline PSBT signing demo):
+./scripts/demo-offline.sh
+
+# 3. Provision a BIP39 mnemonic. See docs/usage.md for safe ways
+#    to generate one; for a quick test you can use the canonical
+#    Trezor vector (DO NOT use this for real funds):
+mkdir -p ~/.hadawallet
+printf '%s\n' \
+  "abandon abandon abandon abandon abandon abandon \
+abandon abandon abandon abandon abandon about" \
+  > ~/.hadawallet/mnemonic.txt
+
+# 4. Derive your first BIP84 P2WPKH address:
 ./bin/hadawallet --address mainnet
 # bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu
+
+# 5. Sign a fixture PSBT (replace --fixture with your own PSBT on stdin):
+./bin/hadawallet --fixture | ./bin/hadawallet > /tmp/signed.psbt
+
+# 6. What next?
+./bin/hadawallet --help              # full mode reference
+# docs/usage.md                       # mainnet usage, safety checklist
+# proofs/README.md                    # what's proven, what's trusted
 ```
+
+## Documentation
+
+- **Usage guide** — [docs/usage.md](docs/usage.md): how to provision a
+  mnemonic, sign PSBTs, derive addresses, mainnet safety checklist.
+- **Proof model** — [proofs/README.md](proofs/README.md): what's proven,
+  what's trusted, the precise boundary.
+- **STM32 quickstart** — [docs/stm32-quickstart.md](docs/stm32-quickstart.md):
+  cross-compile for Nucleo-F411 (scaffolding).
+- **Contributing** — [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Security** — [SECURITY.md](SECURITY.md).
+- **Changelog** — [CHANGELOG.md](CHANGELOG.md).
 
 ## The claim
 
@@ -37,29 +69,9 @@ If a future change ever introduces such a path, the build fails. The claim is
 strong but narrow — see [`proofs/README.md`](proofs/README.md) for the precise
 proof boundary.
 
-## End-to-end demo
-
-```bash
-# 1. Build.
-alr build
-
-# 2. Generate a privkey file (32 raw bytes).
-head -c 32 /dev/urandom > ~/.hadawallet/key.bin
-
-# 3. Sign a PSBT.
-./bin/hadawallet --fixture | ./bin/hadawallet > /tmp/signed.psbt
-#                ^^^^^^^^^   ^^^^^^^^^^^^^^^
-#                fixture     sign-mode (stdin -> stdout)
-
-# 4. Inspect.
-xxd /tmp/signed.psbt | head -8
-```
-
-The full automated version lives in [`scripts/demo-offline.sh`](scripts/demo-offline.sh).
-
 ## Architecture
 
-Each module's SPARK status as of v0.1-dev:
+Each module's SPARK status as of v0.2-dev:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────┐
@@ -116,7 +128,7 @@ except via `Sign`, whose declared dependency is `(Signature, Length) =>
 - The Ada runtime, GNAT compiler, GNATprove toolchain, libc, and OS.
 - Hardware (when ported to STM32 — that work is v0.2+).
 
-### Not in scope for v0.1
+### Not in scope for v0.1–v0.2
 
 - Side-channel resistance (timing, power, EM). Hardware-phase concern.
 - Glitching / fault injection.
@@ -154,27 +166,27 @@ alr build                          # BACKEND=c (default), links libsecp256k1
 BACKEND=ada alr build              # no C library linked; pure-Ada path
 ```
 
-**Pure-Ada secp256k1 status (Phase D in progress):**
+**Pure-Ada secp256k1 status (Phase D complete):**
 
-| Operation                    | Status                                 |
-|------------------------------|----------------------------------------|
-| `Field.{Add,Sub,Mul,Sqr,Inv}` | ✅ Working, vector-tested              |
-| `Scalar.{Add,Sub}`           | ✅ Working                             |
-| `Scalar.{Mul,Inv}`           | ❌ TODO (mod-n reduction pending)      |
-| `Group.Generator`            | ✅                                     |
-| `Group.Scalar_Mul`           | ✅ Working (affine double-and-add)     |
-| `Group.To_Compressed`        | ✅                                     |
-| `Group.From_Compressed`      | ❌ TODO (sqrt mod p pending)           |
-| `Ecdsa.Pubkey_From_Privkey`  | ✅ Working (calls Group.Scalar_Mul)    |
-| `Ecdsa.Tweak_Add_Scalar`     | ✅ Working (BIP32 non-hardened)        |
-| `Ecdsa.Sign`                 | ❌ TODO (needs `Scalar.{Mul,Inv}`)     |
-| `Der.Encode_Signature`       | ✅                                     |
+| Operation                     | Status                                |
+|-------------------------------|---------------------------------------|
+| `Field.{Add,Sub,Mul,Sqr,Inv}` | ✅ Working, vector-tested             |
+| `Scalar.{Add,Sub,Mul,Inv}`    | ✅ Working, vector-tested             |
+| `Group.Generator`             | ✅                                    |
+| `Group.{To,From}_Compressed`  | ✅ Working (sqrt mod p via Fermat)    |
+| `Group.Scalar_Mul`            | ✅ Working (affine double-and-add)    |
+| `Ecdsa.Pubkey_From_Privkey`   | ✅ Working (calls Group.Scalar_Mul)   |
+| `Ecdsa.Tweak_Add_Scalar`      | ✅ Working (BIP32 non-hardened)       |
+| `Ecdsa.Sign`                  | ✅ Working (RFC 6979 deterministic)   |
+| `Der.Encode_Signature`        | ✅ Working (BIP66 minimal DER)        |
 
 **Cross-backend equality verified**: BIP84 derivation
 `m/84'/0'/0'/0/0` from the canonical "abandon × 11 + about" mnemonic
 produces the identical address `bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu`
-under both backends. All 53 c-backend tests pass; ada-backend has
-3 ECDSA-Sign failures pending the Scalar.Mul/Inv work.
+under both backends. BACKEND=ada signing is functional but stays
+opt-in for v0.2 — BACKEND=c (libsecp256k1) is the default
+production path. Full byte-for-byte signature parity validation
+(BACKEND=ada becomes default) is post-MVP.
 
 ## STM32F411 Nucleo (scaffolding)
 

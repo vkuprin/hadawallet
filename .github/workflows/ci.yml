@@ -106,10 +106,11 @@ jobs:
         continue-on-error: true
         run: ./scripts/demo.sh
 
-      - name: BACKEND=ada native build (Phase D skeleton plumbing)
+      - name: BACKEND=ada native build (pure-SPARK secp256k1)
         # Verifies the Signing body alternation works: BACKEND=ada
-        # builds and links without libsecp256k1. Sign returns
-        # Length=0 — see src/backend_ada/signing.adb.
+        # builds and links without libsecp256k1. As of Phase D
+        # completion the pure-Ada backend actually signs — the next
+        # two steps exercise that path so the opt-in is real.
         run: |
           BACKEND=ada alr -n build
           # Confirm libsecp256k1 is NOT in the link.
@@ -117,6 +118,17 @@ jobs:
             echo "error: BACKEND=ada link contains libsecp256k1" >&2
             exit 1
           fi
+
+      - name: BACKEND=ada smoke run (ECDSA Sign must succeed)
+        # --smoke exits non-zero if Signing.Sign returns Length=0,
+        # catching any regression that breaks the pure-Ada signing path.
+        run: ./bin/hadawallet --smoke
+
+      - name: BACKEND=ada end-to-end PSBT signing demo (offline)
+        # demo-offline.sh fails if the signed PSBT lacks the BIP174
+        # partial_sig key (22 02). Validates the full pure-Ada signing
+        # path produces a structurally valid signed PSBT.
+        run: ./scripts/demo-offline.sh
 
   cross-build-stm32:
     runs-on: ubuntu-latest

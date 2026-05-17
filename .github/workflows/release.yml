@@ -1,0 +1,111 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release-binaries:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-latest
+            archive_ext: tar.gz
+          - target: macos-arm64
+            runner: macos-14
+            archive_ext: tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Alire
+        uses: alire-project/setup-alire@v3
+
+      - name: Install GNAT native toolchain
+        # Mirrors the ci.yml install pattern so the release binaries are
+        # built with the same toolchain that proves the codebase.
+        run: |
+          alr index --update-all
+          alr -n toolchain --select gnat_native gprbuild
+
+      - name: Install libsecp256k1 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsecp256k1-dev
+
+      - name: Install libsecp256k1 (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libsecp256k1
+
+      - name: Build (BACKEND=c, validation profile)
+        run: alr -n build --validation
+
+      - name: Verify binary runs
+        run: |
+          ./bin/hadawallet --version
+          ./bin/hadawallet --help > /dev/null
+
+      - name: Stage release artifacts
+        run: |
+          STAGE="hadawallet-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "dist/${STAGE}"
+          cp bin/hadawallet "dist/${STAGE}/"
+          cp README.md LICENSE CHANGELOG.md "dist/${STAGE}/"
+          cp -r docs "dist/${STAGE}/"
+          cp -r proofs "dist/${STAGE}/"
+          (cd dist && tar -czf "${STAGE}.tar.gz" "${STAGE}")
+          (cd dist && shasum -a 256 "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256")
+          ls -la dist/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/hadawallet-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+            dist/hadawallet-${{ github.ref_name }}-${{ matrix.target }}.tar.gz.sha256
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          generate_release_notes: true
+          body: |
+            ## hadawallet ${{ github.ref_name }}
+
+            Formally verified Bitcoin hardware wallet firmware in SPARK/Ada.
+
+            **Headline guarantee:** the private key never leaves the
+            `Signing` module — verified by SPARK flow analysis at
+            `gnatprove --level=4` (22/22 checks proved).
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md)
+            for what's in this release.
+
+            ### Downloads
+
+            | Target           | Archive |
+            |------------------|---------|
+            | Linux x86_64     | `hadawallet-${{ github.ref_name }}-linux-x86_64.tar.gz` |
+            | macOS arm64      | `hadawallet-${{ github.ref_name }}-macos-arm64.tar.gz`  |
+
+            Each archive also has a `.sha256` companion. Verify before
+            running:
+
+            ```bash
+            shasum -a 256 -c hadawallet-${{ github.ref_name }}-<target>.tar.gz.sha256
+            ```
+
+            ### First run
+
+            ```bash
+            tar -xzf hadawallet-${{ github.ref_name }}-<target>.tar.gz
+            cd hadawallet-${{ github.ref_name }}-<target>
+            ./hadawallet --help
+            ```
+
+            See [docs/usage.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/usage.md)
+            for the mainnet usage guide and safety checklist.

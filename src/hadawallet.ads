@@ -38,4 +38,7 @@ is
    --  Network selector for address encoding and SLIP-44 path coin type.
    type Network is (Bitcoin_Mainnet, Bitcoin_Testnet, Bitcoin_Regtest);
 
+   --  Release version. Kept in sync with alire.toml on tagged releases.
+   Version_String : constant String := "0.2.0";
+
 end Hadawallet;

@@ -1,6 +1,6 @@
 name = "hadawallet"
 description = "Formally verified Bitcoin hardware wallet firmware in SPARK/Ada"
-version = "0.1.0-dev"
+version = "0.2.0"
 
 authors = ["Vitaly Kuprin"]
 maintainers = ["Vitaly Kuprin <vkuprins97@gmail.com>"]
