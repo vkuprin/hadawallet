@@ -1,0 +1,19 @@
+CLAUDE.md
+  s_442819185a13d6::t_8a3d115b673a35 7,26,28-30,47-48,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "96ec264f466d65bbe591101f86fddb0819982478",
+  "prompts": {},
+  "sessions": {
+    "s_442819185a13d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02e9e-0f11-7d11-8f05-c30f471b6c89",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
