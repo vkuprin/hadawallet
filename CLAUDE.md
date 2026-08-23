@@ -4,7 +4,7 @@
 
 **ALWAYS use MCP tools before falling back to built-in tools. This is mandatory, not optional.**
 
-- **Discovery/exploration** → Serena `search_for_pattern` FIRST. Do NOT use Grep/Glob to explore unfamiliar code. (ACI is disabled here — no Ada/SPARK tree-sitter support yet.)
+- **Discovery/exploration** → Semble `search` FIRST with `top_k=10`; the server is configured with `--content all` and supports Ada/SPARK file extensions.
 - **Understanding symbols** → Serena `find_symbol`/`get_symbols_overview` FIRST. Do NOT use Read to scan entire files.
 - **Finding references** → Serena `find_referencing_symbols` FIRST. Do NOT grep for function names.
 - **Editing code** → Serena `replace_symbol_body` for whole symbols. Only use Edit for small inline changes.
@@ -23,12 +23,11 @@ Built-in tools (Grep, Glob, Read, Edit) are **fallbacks only** — use them when
 - **Memory**: Use Serena memories to persist project context between conversations
 - Prefer Serena's symbolic tools over raw file reads and grep — they understand code structure
 
-### ACI — disabled for this project
+### Semble (Semantic Code Search)
 
-ACI's tree-sitter pipeline does not yet support Ada/SPARK, so semantic search would
-return no useful chunks for this codebase. Do NOT call `mcp__aci__*` tools here —
-use Serena (`search_for_pattern`, `find_symbol`) for all discovery and navigation.
-Revisit if/when ACI ships an Ada grammar.
+Semble recognizes `.ada`, `.adb`, and `.ads` files and its installed tree-sitter
+language pack includes an Ada parser. Use `search` for natural-language discovery
+and `find_related` for similar implementations, then Serena for symbols and references.
 
 ### Context7
 
@@ -45,8 +44,8 @@ Revisit if/when ACI ships an Ada grammar.
 
 ### Tool Selection Priority
 
-1. **"Where is X?" / understanding code** → Serena `find_symbol`, `get_symbols_overview`, `search_for_pattern`
-2. **Broad discovery / "how does X work?"** → Serena `search_for_pattern` with broad regex (ACI is disabled for Ada/SPARK)
+1. **Broad discovery / "how does X work?"** → Semble `search` (`top_k=10`; server content scope is `all`)
+2. **"Where is X?" / understanding code** → Serena `find_symbol`, `get_symbols_overview`, `search_for_pattern`
 3. **Symbol lookup / references / renaming** → Serena `find_referencing_symbols`, `rename_symbol`
 4. **Exact text search** → Serena `search_for_pattern` (preferred) or built-in Grep as fallback
 5. **Complex decisions / planning / debugging** → Sequential Thinking
@@ -55,7 +54,7 @@ Revisit if/when ACI ships an Ada grammar.
 
 ### Typical Workflow
 
-1. **Discover** — Serena: `search_for_pattern` with broad regex, or `get_symbols_overview` on a likely file
+1. **Discover** — Semble: use a natural-language query to surface relevant Ada/SPARK files and snippets
 2. **Think** — Sequential Thinking: plan the approach, evaluate trade-offs, identify affected areas
 3. **Navigate** — Serena: `find_symbol` → `find_referencing_symbols` → understand the dependency chain
 4. **Learn** — Context7: fetch latest docs for any libraries involved
